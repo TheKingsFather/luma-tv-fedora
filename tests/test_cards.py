@@ -8,6 +8,7 @@ from PyQt6.QtTest import QTest
 from cards import Artwork,MediaCard,ResponsiveGrid
 from pathlib import Path
 
+QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
 APP=QApplication.instance() or QApplication([])
 
 class ArtworkTests(unittest.TestCase):

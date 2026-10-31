@@ -1,0 +1,15 @@
+Luma TV Fedora 0.3.0
+
+30 standard checks passed; 4 real OpenGL checks passed separately under xcb.
+Mini player uses the same engine, video surface and render context.
+Repeated mini/full transitions issue no loadfile calls and preserve pause and position.
+Video frames verified in both hosts; compact pause controls and resize verified.
+Browse navigation leaves playback active. Minimizing main leaves mini visible.
+Closing mini stops playback and keeps current browse widgets.
+Live EOF closes mini and preserves the current browse page.
+Closing main while mini is active hides mini and terminates the engine cleanly.
+Double-click restore cancels pending click-to-pause.
+
+Logs: tests.log, render-tests.log, mini-player-tests.log
+Preview: mini-player.png
+Existing running app left intact; restart to load the new shared-GL startup configuration.

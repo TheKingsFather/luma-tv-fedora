@@ -2,6 +2,11 @@ test_live_player_back_returns_to_the_same_cards (test_embedded.EmbeddedTests.tes
 Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
 Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
 ok
+test_mini_player_preserves_video_during_browsing_and_repeated_restore (test_embedded.EmbeddedTests.test_mini_player_preserves_video_during_browsing_and_repeated_restore) ... Cannot load libcuda.so.1
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+ok
 test_real_video_is_inside_luma_and_controls_work (test_embedded.EmbeddedTests.test_real_video_is_inside_luma_and_controls_work) ... Cannot load libcuda.so.1
 Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
 ok
@@ -13,6 +18,6 @@ Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file:
 ok
 
 ----------------------------------------------------------------------
-Ran 3 tests in 17.362s
+Ran 4 tests in 45.923s
 
 OK

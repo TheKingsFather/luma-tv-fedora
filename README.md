@@ -1,6 +1,6 @@
 # Luma TV for Fedora
 
-Native Qt desktop edition of Luma, with the teal/violet glass theme, Stremio QR pairing and mpv video playback. Version 0.2.1.
+Native Qt desktop edition of Luma, with the teal/violet glass theme, Stremio QR pairing and mpv video playback. Version 0.3.0.
 
 Source repository: [TheKingsFather/luma-tv-fedora](https://github.com/TheKingsFather/luma-tv-fedora) (private).
 
@@ -18,6 +18,7 @@ The **Explore the interface** button opens public Cinemeta catalogs before conne
 - Home, Movies, Series, Live catalogs, search, catalog pagination, library, details and season/episode selection.
 - Direct stream discovery, provider request headers, source selection and failover.
 - Embedded libmpv playback inside Luma, with pause, seek, audio/subtitle selection, add-on subtitle downloads, next episode and sleep timer controls in Luma.
+- Floating, resizable mini player with compact glass controls; keep watching while browsing or using other apps.
 - Continue watching and watch-state sync. Offline changes are saved locally and retried on refresh or subsequent writes.
 - Encrypted account/cache file. Its encryption key is stored in Fedora's Secret Service keyring. The app never writes an unencrypted Stremio auth key to disk or passes stream URLs in mpv's command-line arguments.
 
@@ -28,6 +29,8 @@ Playback renders directly into Luma’s video surface with glass controls. It su
 - Luma: **F11** fullscreen, **Ctrl+F** search, **Escape** back.
 - In-app player: **Space** pause, **←/→** seek ten seconds, **F** fullscreen, **M** mute.
 - Use the glass controls for source selection, volume, audio tracks, subtitles, next episode and sleep timer.
+- Click **Mini player** or press **P** during playback. **Ctrl+Shift+P** toggles mini/full mode from the main window.
+- Mini player: drag the title to move, drag the bottom-right grip to resize, use **↗** or double-click video to restore. **Escape/P/F** restores from the mini window. **×** stops playback. The main window’s **Return to player** button restores it too.
 - Closing Luma also stops playback. Settings → Disconnect removes this desktop's saved account data.
 
 ## Dependencies on another Fedora machine
@@ -52,7 +55,7 @@ QT_QPA_PLATFORM=xcb .venv/bin/python -m unittest discover -s tests -p test_embed
 QT_QPA_PLATFORM=offscreen ./launch.sh --preview --smoke
 ```
 
-The suite contains 33 checks. The offscreen run passes 30 and skips the three real OpenGL checks. A separate xcb run verifies Live playback returning to the same cached cards, decoded frames inside Luma’s framebuffer, pause/seek, audio tracks, resizing, source switching, repeated browse/play transitions and final cleanup. Local engine playback also checks that no player subprocess is launched. See `artifacts/tests.log`, `artifacts/render-tests.log` and the UI screenshots.
+The suite contains 34 checks. The offscreen run passes 30 and skips the four real OpenGL checks. A separate xcb run verifies Live playback returning to the same cached cards, decoded frames inside Luma’s framebuffer, pause/seek, audio tracks, resizing, source switching, repeated browse/play transitions and final cleanup. Local engine playback also checks that no player subprocess is launched. See `artifacts/tests.log`, `artifacts/render-tests.log` and the UI screenshots.
 
 Live API tests create an unclaimed temporary pairing code; they never connect an account or write to a real library.
 
@@ -90,3 +93,10 @@ Replaced the external mpv process with libmpv rendering into a persistent Qt Ope
 During a section visit, Luma keeps browse pages alive in memory, including their decoded artwork, loaded catalog pages, focus and scroll positions. Back from details restores the last listing. Stopping or finishing Live playback returns directly to that cached listing without refreshing add-ons, catalogs or artwork. Selecting the current section again also reuses it. Switching to another section discards the previous section’s browse cache; returning to Live then refreshes its add-ons and catalogs. Settings → Refresh Stremio explicitly invalidates cached pages too.
 
 Pending catalog and artwork requests can complete on retained pages without navigating away from the active screen. Results from discarded sections are ignored. Five navigation checks verify pagination and both scroll axes, repeated Back navigation without requests, section invalidation, late responses and Live end-of-stream navigation. A real OpenGL playback check verifies the embedded player returns to the same card widgets.
+
+
+## 0.3.0 — Floating mini player
+
+The full player’s Mini player button moves the existing video surface into a resizable, always-on-top window with glass pause, seek, mute, restore and close controls. The main window returns to its cached listing and remains usable while playback continues. Returning to full playback preserves position, pause state, tracks, volume and the same libmpv engine and render context. Starting another title replaces the current stream. Closing the mini player stops playback and leaves the current browse page intact; closing Luma shuts down both windows. Live end-of-stream closes the mini player without reloading browse cards.
+
+Qt OpenGL context sharing is enabled before application creation so moving the video widget between windows preserves its render context ([Qt resource-sharing documentation](https://doc.qt.io/qt-6/qopenglwidget.html#resource-sharing)). Real video checks cover repeated mini/full transitions without reloading the source, pause/play, resizing, independent visibility when Luma is minimized, browsing, Live completion, closing PiP and closing Luma while PiP is active. The fixture screenshot is `artifacts/mini-player.png`.

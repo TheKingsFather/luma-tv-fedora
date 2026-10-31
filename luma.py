@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QWidget,
 from backend import Client, request, browseable, extra, future_video, UA, LIVE_TYPES, catalog_choices
 from player import Player
 from cards import MediaCard, Artwork, ResponsiveGrid
-from player_view import PlaybackView
+from player_view import PlaybackView,MiniPlayer
 
 ROOT = Path(__file__).resolve().parent
 POOL = futures.ThreadPoolExecutor(8)
@@ -94,8 +94,11 @@ class Window(QMainWindow):
         self.sleep_timer=QTimer(self);self.sleep_timer.setSingleShot(True);self.sleep_timer.timeout.connect(self.player.pause)
         self.image_cache={};self.tab='Home'
         self._page_serial=0;self._history=[];self._cached_pages={}
-        self.stack=QStackedWidget();self.setCentralWidget(self.stack);self.playback_view=None;self.root=None
+        self.stack=QStackedWidget();self.setCentralWidget(self.stack);self.playback_view=None;self.root=None;self.mini_window=None;self.mini_mode=False
         self.statusBar().setStyleSheet('color:#A2B8C9;background:#0A1422;border:0;padding:6px;')
+        self.return_player_button=button('↗  Return to player',self.restore_player)
+        self.statusBar().addPermanentWidget(self.return_player_button);self.return_player_button.hide()
+        QShortcut(QKeySequence('Ctrl+Shift+P'),self,activated=self.toggle_mini_player)
         QShortcut(QKeySequence('F11'),self,activated=lambda:self.showNormal() if self.isFullScreen() else self.showFullScreen())
         QShortcut(QKeySequence('Escape'),self,activated=self.back)
         QShortcut(QKeySequence('Ctrl+F'),self,activated=self.search_page)
@@ -129,7 +132,7 @@ class Window(QMainWindow):
         self._history.clear();self._cached_pages.clear()
 
     def leave_page(self,remember=True):
-        if getattr(self,'current','')=='Playing':
+        if getattr(self,'current','')=='Playing' and not self.mini_mode:
             self.sync_progress();self.player.stop();self.play_title=None
         if self.root is not None:
             if remember and getattr(self,'current','') in ('Home','Catalog'):
@@ -196,7 +199,7 @@ class Window(QMainWindow):
 
     def notice(self, message):
         self.statusBar().showMessage(message,12000)
-        if getattr(self,'current','')=='Playing' and self.playback_view:
+        if (getattr(self,'current','')=='Playing' or self.mini_mode) and self.playback_view:
             self.playback_view.show_message(message)
 
     def image(self, url, widget, width=250, height=360, backdrop=False):
@@ -224,6 +227,7 @@ class Window(QMainWindow):
         self.work(fetch,done,lambda _:None,token,pool=POOL if backdrop else IMAGES)
 
     def pair(self):
+        if self.mini_mode:self.stop_playback()
         self.clear_browse_cache();self.page(remember=False);self.current='Connect';self.header()
         body=QHBoxLayout();body.setSpacing(65)
         left=QVBoxLayout();left.addStretch();left.addWidget(label('A LITTLE GLASS. A LOT OF CINEMA.',12,'#C0F4E1',True));left.addSpacing(18)
@@ -411,6 +415,7 @@ class Window(QMainWindow):
         self.work(lambda:self.client.streams(title,video,included if included is not None else title.get('streams') if video==title.get('id') else None),ready)
 
     def play(self,title,video,streams,index=0,resume=None):
+        if self.mini_mode:self.stop_playback()
         self.page();self.play_title=title;self.play_video=video;self.play_key=self.client.state['key'];self.watched=0;self.last_position=0
         position=self.client.resume(title.get('id',title.get('_id')),video) if resume is None else resume
         try:
@@ -418,15 +423,51 @@ class Window(QMainWindow):
         except Exception:
             self.player.stop();self.play_title=None;self.notice('The embedded player could not start. Check the libmpv installation.')
 
-    def now_playing(self):
+    def now_playing(self,restoring=False):
         self.current='Playing';self.statusBar().hide()
         if self.playback_view is None:
-            self.playback_view=PlaybackView(self.player,self.play_title.get('name',''),self.stop_playback,self.tracks,self.player_sources,self.next_episode,self.sleep_menu,self.toggle_fullscreen)
+            self.playback_view=PlaybackView(self.player,self.play_title.get('name',''),self.stop_playback,self.tracks,self.player_sources,self.next_episode,self.sleep_menu,self.toggle_fullscreen,mini=self.enter_mini_player)
             self.stack.addWidget(self.playback_view)
+            self.playback_view.restore_requested.connect(self.restore_player)
+            self.playback_view.stop_requested.connect(self.stop_playback)
         self.playback_view.title.setText(self.play_title.get('name',''))
-        self.playback_view.show_message('Opening your source…');self.playback_view.show_controls()
+        self.playback_view.show_message('Playing in Luma' if restoring and not self.player.loading else 'Opening your source…');self.playback_view.show_controls()
         self.stack.setCurrentWidget(self.playback_view)
         self.playback_view.setFocus()
+
+    def toggle_mini_player(self):
+        if self.mini_mode:self.restore_player()
+        else:self.enter_mini_player()
+
+    def enter_mini_player(self):
+        if not self.play_title or not self.playback_view:return
+        if self.mini_mode:
+            self.mini_window.raise_();return
+        if self.isFullScreen():self.showNormal()
+        self.mini_mode=True
+        self.stack.removeWidget(self.playback_view)
+        self.mini_window=MiniPlayer(self.playback_view,self.restore_player,self.stop_playback)
+        self.playback_view.set_mini(True)
+        area=self.screen().availableGeometry()
+        self.mini_window.move(area.right()-self.mini_window.width()-24,area.bottom()-self.mini_window.height()-24)
+        self.mini_window.show();self.playback_view.show()
+        self.return_player_button.show()
+        if not self.restore_browse_page():self.home(self.tab)
+
+    def dock_player(self):
+        if not self.mini_mode:return
+        mini=self.mini_window;self.mini_window=None;self.mini_mode=False
+        mini.layout().removeWidget(self.playback_view)
+        self.playback_view.hide();self.playback_view.setParent(self.stack)
+        self.stack.addWidget(self.playback_view);self.playback_view.set_mini(False)
+        mini.hide();mini.deleteLater();self.return_player_button.hide()
+
+    def restore_player(self):
+        if not self.mini_mode:return
+        self.page()  # Remember the page browsed while the mini player was open.
+        self.dock_player();self.now_playing(restoring=True)
+        if self.isMinimized():self.showNormal()
+        self.raise_();self.activateWindow()
 
     def playback_changed(self,position,duration,paused):
         delta=position-self.last_position
@@ -442,7 +483,7 @@ class Window(QMainWindow):
 
     def playback_finished(self,ended):
         self.sync_progress(ended)
-        if ended and self.tab=='Live' and self._history:
+        if ended and self.play_title and str(self.play_title.get('type','')).lower() in LIVE_TYPES and (self._history or self.mini_mode):
             self.stop_playback();return
         if ended and self.settings.value('autoplay',True,type=bool):self.next_episode(automatic=True)
         else:self.notice('Playback finished.')
@@ -495,6 +536,8 @@ class Window(QMainWindow):
         dialog.exec()
 
     def stop_playback(self):
+        if self.mini_mode:
+            self.sync_progress();self.player.stop();self.play_title=None;self.dock_player();return
         title=self.play_title
         if self.isFullScreen():self.showNormal()
         self.statusBar().show()
@@ -522,6 +565,7 @@ class Window(QMainWindow):
             elif key in (Qt.Key.Key_Left,Qt.Key.Key_Right):self.player.seek(self.player.position+(-10 if key==Qt.Key.Key_Left else 10))
             elif key==Qt.Key.Key_F:self.toggle_fullscreen()
             elif key==Qt.Key.Key_M:self.player.send('cycle','mute')
+            elif key==Qt.Key.Key_P:self.enter_mini_player()
             else:return super().keyPressEvent(event)
             self.playback_view.show_controls();event.accept();return
         super().keyPressEvent(event)
@@ -534,7 +578,7 @@ class Window(QMainWindow):
         if self.client.connected:box.addWidget(button('Disconnect this desktop',self.disconnect))
         for key,name,default in [('chooseSource','Always choose a source',False),('autoplay','Play the next episode',True)]:
             enabled=self.settings.value(key,default,type=bool);b=button(name+('  ·  On' if enabled else '  ·  Off'),lambda _,k=key,e=enabled:(self.settings.setValue(k,not e),self.settings_page()));box.addWidget(b)
-        box.addWidget(label('Manage add-ons in Stremio on your phone, then refresh them here.',13,'#AEBED1'));self.layout.addWidget(panel);self.layout.addStretch();self.layout.addWidget(label('Luma TV for Fedora  0.2.1    ·    F11 fullscreen    ·    Playback powered by mpv',12,'#A2B8C9'))
+        box.addWidget(label('Manage add-ons in Stremio on your phone, then refresh them here.',13,'#AEBED1'));self.layout.addWidget(panel);self.layout.addStretch();self.layout.addWidget(label('Luma TV for Fedora  0.3.0    ·    F11 fullscreen    ·    Playback powered by mpv',12,'#A2B8C9'))
 
     def refresh_stremio(self):
         self.clear_browse_cache()
@@ -542,6 +586,7 @@ class Window(QMainWindow):
 
     def disconnect(self):
         if QMessageBox.question(self,'Disconnect Stremio?','Remove this desktop’s saved account connection?')!=QMessageBox.StandardButton.Yes:return
+        if self.mini_mode:self.stop_playback()
         self.sync_progress();self.player.stop();self.play_title=None
         self.work(self.client.disconnect,lambda _:self.pair(),pool=WRITES)
 
@@ -554,7 +599,7 @@ class Window(QMainWindow):
 
     def closeEvent(self,event):
         self._page_serial+=1;self.generation=self._page_serial;self.clear_browse_cache()
-        self.pair_timer.stop();self.sync_progress();self.player.shutdown();self.playback_sync.stop();event.accept()
+        self.pair_timer.stop();self.sync_progress();self.dock_player();self.player.shutdown();self.playback_sync.stop();event.accept()
 
 def main():
     app=QApplication(sys.argv);app.setApplicationName('tv.luma.Fedora');app.setApplicationDisplayName('Luma TV');app.setDesktopFileName('tv.luma.Fedora');app.setWindowIcon(QIcon(str(ROOT/'luma.svg')));app.setOrganizationName('Luma');app.setStyle('Fusion');app.setStyleSheet(STYLE)

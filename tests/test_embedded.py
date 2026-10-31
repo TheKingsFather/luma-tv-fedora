@@ -11,6 +11,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtTest import QTest
 from luma import Window,STYLE
 from cards import MediaCard
+from player_view import MiniPlayer
 
 APP=QApplication.instance() or QApplication([])
 APP.setStyle('Fusion');APP.setStyleSheet(STYLE)
@@ -91,6 +92,68 @@ class EmbeddedTests(unittest.TestCase):
                 self.assertEqual(w.current,'Home');self.assertEqual(catalog.call_count,1)
                 self.assertFalse(w.player.streams)
         finally:w.close();APP.processEvents();self.assertIsNone(w.player.engine)
+
+    def test_mini_player_preserves_video_during_browsing_and_repeated_restore(self):
+        class QuietMini(MiniPlayer):
+            def __init__(self,*args):
+                super().__init__(*args)
+                self.setWindowFlags(self.windowFlags()|Qt.WindowType.BypassWindowManagerHint|Qt.WindowType.WindowDoesNotAcceptFocus)
+                self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+            def move(self,*args):super().move(-5000,-5000)
+        w=self.window();w.activateWindow=lambda:None;w.raise_=lambda:None
+        try:
+            self.wait_frame(w)
+            w.player.pause();w.player.seek(6)
+            deadline=time.monotonic()+3
+            while (not w.player.paused or w.player.position<5.8) and time.monotonic()<deadline:APP.processEvents();time.sleep(.02)
+            engine=w.player.engine;surface=w.playback_view.video;context=surface.render_context
+            with patch('luma.MiniPlayer',QuietMini),patch.object(w.client,'catalog',return_value=[]),patch.object(w.player,'load',wraps=w.player.load) as load:
+                for _ in range(3):
+                    position=w.player.position
+                    w.enter_mini_player();APP.processEvents();mini=w.mini_window
+                    self.wait_frame(w)
+                    self.assertTrue(w.mini_mode);self.assertTrue(mini.windowFlags()&Qt.WindowType.WindowStaysOnTopHint)
+                    self.assertIs(surface.window(),mini);self.assertIs(w.player.engine,engine)
+                    self.assertIs(surface.render_context,context);self.assertTrue(w.player.paused)
+                    self.assertAlmostEqual(w.player.position,position,delta=.4)
+                    w.home('Movies');APP.processEvents();self.assertTrue(w.player.streams)
+                    mini.resize(380,240);APP.processEvents()
+                    self.assertTrue(w.playback_view.isVisible())
+                    self.assertLessEqual(surface.width(),380,f'host={mini.size()} view={w.playback_view.size()} min={w.playback_view.minimumSizeHint()}')
+                    if _==0:
+                        w.showMinimized();APP.processEvents();self.assertTrue(mini.isVisible())
+                        w.showNormal();APP.processEvents()
+                        w.playback_view.show_controls();APP.processEvents()
+                        mini.grab().save(str(Path(__file__).parents[1]/'artifacts/mini-player.png'))
+                        QTest.mouseClick(w.playback_view.mini_pause,Qt.MouseButton.LeftButton)
+                        deadline=time.monotonic()+2
+                        while w.player.paused and time.monotonic()<deadline:APP.processEvents();time.sleep(.02)
+                        self.assertFalse(w.player.paused)
+                        QTest.mouseClick(w.playback_view.mini_pause,Qt.MouseButton.LeftButton)
+                        deadline=time.monotonic()+2
+                        while not w.player.paused and time.monotonic()<deadline:APP.processEvents();time.sleep(.02)
+                    QTest.mouseClick(w.playback_view.restore_button,Qt.MouseButton.LeftButton);APP.processEvents()
+                    self.assertFalse(w.mini_mode);self.assertIs(surface.window(),w)
+                    self.assertIs(surface.render_context,context);self.assertIs(w.player.engine,engine)
+                w.enter_mini_player();APP.processEvents();paused=w.player.paused
+                QTest.mouseDClick(w.playback_view.mini_overlay,Qt.MouseButton.LeftButton);APP.processEvents()
+                self.assertFalse(w.mini_mode);self.assertEqual(w.player.paused,paused)
+                self.assertFalse(w.playback_view.click_timer.isActive())
+                self.assertEqual(load.call_count,0)
+                w.enter_mini_player();APP.processEvents();browse=w.root
+                w.mini_window.close();APP.processEvents()
+                self.assertFalse(w.mini_mode);self.assertFalse(w.player.streams);self.assertIsNone(w.play_title)
+                self.assertIs(w.root,browse)
+                # A finished Live stream closes only PiP and preserves browsing.
+                w.play({'id':'fixture','name':'Channel','type':'tv'},'fixture',[{'url':self.clip.as_uri(),'name':'Fixture'}])
+                self.wait_frame(w);w.enter_mini_player();APP.processEvents();browse=w.root
+                w.playback_finished(True);APP.processEvents()
+                self.assertFalse(w.mini_mode);self.assertIs(w.root,browse);self.assertFalse(w.player.streams)
+                # Closing the main window also disposes a still-open mini player.
+                w.play({'id':'fixture','name':'Close test','type':'movie'},'fixture',[{'url':self.clip.as_uri(),'name':'Fixture'}])
+                self.wait_frame(w);w.enter_mini_player();APP.processEvents();w.close();APP.processEvents()
+                self.assertIsNone(w.mini_window);self.assertIsNone(w.player.engine)
+        finally:w.close();APP.processEvents()
 
     def test_repeated_playback_and_source_switch_cleanup(self):
         w=self.window()

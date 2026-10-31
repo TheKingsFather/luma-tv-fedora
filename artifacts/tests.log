@@ -3,6 +3,7 @@ test_live_cards_are_wide_and_keyboard_activatable (test_cards.ArtworkTests.test_
 test_logo_renders_at_launcher_sizes (test_cards.ArtworkTests.test_logo_renders_at_launcher_sizes) ... ok
 test_wide_preview_retains_both_edges_in_portrait_frame (test_cards.ArtworkTests.test_wide_preview_retains_both_edges_in_portrait_frame) ... ok
 test_live_player_back_returns_to_the_same_cards (test_embedded.EmbeddedTests.test_live_player_back_returns_to_the_same_cards) ... skipped 'Real OpenGL requires the isolated xcb test run'
+test_mini_player_preserves_video_during_browsing_and_repeated_restore (test_embedded.EmbeddedTests.test_mini_player_preserves_video_during_browsing_and_repeated_restore) ... skipped 'Real OpenGL requires the isolated xcb test run'
 test_real_video_is_inside_luma_and_controls_work (test_embedded.EmbeddedTests.test_real_video_is_inside_luma_and_controls_work) ... skipped 'Real OpenGL requires the isolated xcb test run'
 test_repeated_playback_and_source_switch_cleanup (test_embedded.EmbeddedTests.test_repeated_playback_and_source_switch_cleanup) ... skipped 'Real OpenGL requires the isolated xcb test run'
 test_in_process_play_pause_seek_without_child_player (test_luma.LiveTests.test_in_process_play_pause_seek_without_child_player) ... Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
@@ -34,6 +35,6 @@ test_live_same_tab_and_details_back_reuse_home_horizontal_scroll (test_navigatio
 test_old_section_response_is_discarded_and_live_eof_returns_to_cache (test_navigation.NavigationTests.test_old_section_response_is_discarded_and_live_eof_returns_to_cache) ... ok
 
 ----------------------------------------------------------------------
-Ran 33 tests in 3.541s
+Ran 34 tests in 12.251s
 
-OK (skipped=3)
+OK (skipped=4)

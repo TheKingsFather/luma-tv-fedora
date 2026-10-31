@@ -3,9 +3,13 @@ import locale
 import tempfile
 import time
 import mpv
-from PyQt6.QtCore import QObject,QTimer,pyqtSignal,Qt,QByteArray
+from PyQt6.QtCore import QObject,QTimer,pyqtSignal,Qt,QByteArray,QCoreApplication
 from PyQt6.QtGui import QOpenGLContext,QSurfaceFormat
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+
+# Set before QApplication: Qt then preserves a QOpenGLWidget's native context
+# when moving it between the main window and picture-in-picture host.
+QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
 
 class Player(QObject):
     changed=pyqtSignal(float,float,bool)
@@ -20,7 +24,7 @@ class Player(QObject):
         self.engine=None;self.folder=None;self.generation=0
         self.streams=[];self.index=0;self.position=self.duration=0.
         self.paused=False;self.resume=0.;self.loading=False;self.headless=False
-        self.ready=False;self.tracks=[];self.volume=100.;self.cache_paused=False
+        self.ready=False;self.tracks=[];self.volume=100.;self.muted=False;self.cache_paused=False
         self.received.connect(self._receive)
         self.timer=QTimer(self);self.timer.setInterval(500);self.timer.timeout.connect(self.tick)
 
@@ -38,7 +42,7 @@ class Player(QObject):
             if self.headless:options['ao']='null'
             self.engine=mpv.MPV(**options)
             epoch=self.generation
-            for name in ('time-pos','duration','pause','track-list','paused-for-cache','volume'):
+            for name in ('time-pos','duration','pause','track-list','paused-for-cache','volume','mute'):
                 self.engine.observe_property(name,lambda prop,value,e=epoch:self.received.emit(e,{'event':'property-change','name':prop,'data':value}))
             @self.engine.event_callback('file-loaded','end-file')
             def event(ev):
@@ -87,6 +91,7 @@ class Player(QObject):
             if name=='time-pos' and isinstance(value,(int,float)):self.position=float(value)
             elif name=='duration' and isinstance(value,(int,float)):self.duration=float(value)
             elif name=='pause':self.paused=bool(value)
+            elif name=='mute':self.muted=bool(value)
             elif name=='track-list':self.tracks=value or [];self.tracks_changed.emit(self.tracks)
             elif name=='paused-for-cache':self.cache_paused=bool(value);self.buffering.emit(self.cache_paused or self.loading)
             elif name=='volume' and isinstance(value,(int,float)):self.volume=float(value)
