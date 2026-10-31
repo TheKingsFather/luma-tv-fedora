@@ -1,0 +1,13 @@
+Fedora 0.1.2
+25 automated tests passed.
+Full-artwork edge preservation: PASS
+Live landscape proportions: PASS
+Keyboard card activation: PASS
+Responsive grid shrink/grow: PASS
+SVG rendering 16/32/64/512: PASS
+Desktop-file validation: PASS
+GIO launcher/icon resolution: PASS
+Nine PNG icon sizes and scalable SVG installed.
+Icon cache refreshed.
+Real live feed screenshots reviewed at 1920x1040 and 1100x820.
+Existing app/player process left running; new UI loads on app restart.

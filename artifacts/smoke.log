@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/thekingsfather/apps/luma-desktop/player.py", line 102, in event
+    if event.get('event') == 'property-change':
+       ^^^^^^^^^
+AttributeError: 'QChildEvent' object has no attribute 'get'

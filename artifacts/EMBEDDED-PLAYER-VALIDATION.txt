@@ -1,0 +1,12 @@
+Luma TV Fedora 0.2.0
+
+25 offscreen tests passed; two GL tests skipped there and passed separately using xcb.
+Decoded H.264 frames verified in the Luma QOpenGLWidget framebuffer.
+One visible top-level application window; no player subprocess.
+Glass Play/Pause button, seek, volume slider, audio tracks, subtitles off, fullscreen and resizing verified.
+Repeated source switching and browse/play transitions reuse the same engine and GL surface.
+Closing the application frees GL before terminating libmpv.
+Existing user playback left running; close and reopen Luma to load the update.
+
+Logs: tests.log, render-tests.log
+Preview: embedded-player.png

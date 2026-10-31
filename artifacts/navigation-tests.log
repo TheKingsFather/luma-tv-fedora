@@ -1,0 +1,10 @@
+test_back_restores_grid_artwork_pagination_and_scroll_without_requests (test_navigation.NavigationTests.test_back_restores_grid_artwork_pagination_and_scroll_without_requests) ... ok
+test_late_catalog_result_updates_hidden_cache_without_navigation (test_navigation.NavigationTests.test_late_catalog_result_updates_hidden_cache_without_navigation) ... ok
+test_leaving_section_invalidates_cache_and_return_refreshes_once (test_navigation.NavigationTests.test_leaving_section_invalidates_cache_and_return_refreshes_once) ... ok
+test_live_same_tab_and_details_back_reuse_home_horizontal_scroll (test_navigation.NavigationTests.test_live_same_tab_and_details_back_reuse_home_horizontal_scroll) ... ok
+test_old_section_response_is_discarded_and_live_eof_returns_to_cache (test_navigation.NavigationTests.test_old_section_response_is_discarded_and_live_eof_returns_to_cache) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.483s
+
+OK

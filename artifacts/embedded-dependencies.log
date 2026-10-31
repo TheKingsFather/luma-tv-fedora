@@ -1,0 +1,8 @@
+Collecting python-mpv==1.0.8
+  Downloading python_mpv-1.0.8-py3-none-any.whl.metadata (15 kB)
+Downloading python_mpv-1.0.8-py3-none-any.whl (46 kB)
+Installing collected packages: python-mpv
+Successfully installed python-mpv-1.0.8
+
+[notice] A new release of pip is available: 26.0.1 -> 26.2.2
+[notice] To update, run: /home/thekingsfather/apps/luma-desktop/.venv/bin/python -m pip install --upgrade pip

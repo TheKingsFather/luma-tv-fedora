@@ -1,0 +1,15 @@
+Luma TV for Fedora 0.1.0
+2026-10-31
+
+14 automated tests passed.
+Live pairing creation and pending read: passed.
+Public Cinemeta catalog: passed.
+Native Qt browse and series details: passed.
+mpv private IPC, local playback, pause and seek: passed.
+Encrypted state, corruption handling and file permissions: passed.
+Offline library queue and replay: passed.
+Desktop keyring store/lookup/delete: passed with temporary fixture.
+Desktop launcher: installed and validated.
+QR and home screenshots inspected.
+
+Owner phone pairing is required to validate authenticated account import and cloud updates.

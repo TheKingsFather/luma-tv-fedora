@@ -1,0 +1,7 @@
+Fedora 0.1.1 Live correction
+21 automated tests passed.
+Read-only account verification: 12 live catalogs selected, no anime or generic download-library catalogs.
+StremVerse Live Events: 120 TV items returned.
+Sports Streams Live Now: 56 sport items returned.
+MediaFusion configured manifest: no catalogs returned; UI explains this configuration state.
+No add-on configuration or cloud library records were changed by this verification.

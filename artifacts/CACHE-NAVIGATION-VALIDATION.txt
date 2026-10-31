@@ -1,0 +1,10 @@
+Luma TV Fedora 0.2.1
+
+30 offscreen tests passed, 3 real GL checks skipped there.
+3 real OpenGL tests passed separately under xcb.
+Five navigation tests cover same-widget Back navigation, preserved artwork/pagination/scroll,
+zero catalog/add-on requests on Back, refresh after section switch, delayed responses, and Live EOF.
+A real video test verifies Live playback returns to the same card widgets.
+Existing running Luma session left intact; restart once to apply.
+
+Logs: tests.log, render-tests.log, navigation-tests.log

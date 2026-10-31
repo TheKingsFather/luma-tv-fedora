@@ -1,0 +1,9 @@
+test_grid_reflows_when_viewport_grows_and_shrinks (test_cards.ArtworkTests.test_grid_reflows_when_viewport_grows_and_shrinks) ... ok
+test_live_cards_are_wide_and_keyboard_activatable (test_cards.ArtworkTests.test_live_cards_are_wide_and_keyboard_activatable) ... ok
+test_logo_renders_at_launcher_sizes (test_cards.ArtworkTests.test_logo_renders_at_launcher_sizes) ... ok
+test_wide_preview_retains_both_edges_in_portrait_frame (test_cards.ArtworkTests.test_wide_preview_retains_both_edges_in_portrait_frame) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.103s
+
+OK

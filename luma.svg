@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs>
+<linearGradient id="bg" x1=".1" y1="0" x2=".9" y2="1"><stop stop-color="#203D51"/><stop offset=".5" stop-color="#16293E"/><stop offset="1" stop-color="#292445"/></linearGradient>
+<radialGradient id="halo" cx=".12" cy=".1" r="1"><stop stop-color="#87DCCB" stop-opacity=".22"/><stop offset="1" stop-color="#87DCCB" stop-opacity="0"/></radialGradient>
+<linearGradient id="mint" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F0FFF9"/><stop offset=".42" stop-color="#B9F5DF"/><stop offset="1" stop-color="#5DBAB6"/></linearGradient>
+<linearGradient id="violet" x1=".1" y1="0" x2=".9" y2="1"><stop stop-color="#DFDBFF"/><stop offset=".5" stop-color="#B0A7F5"/><stop offset="1" stop-color="#7866C7"/></linearGradient>
+<linearGradient id="edge" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#EAFFFF" stop-opacity=".48"/><stop offset=".5" stop-color="#EAFFFF" stop-opacity=".05"/><stop offset="1" stop-color="#B7A3F4" stop-opacity=".3"/></linearGradient>
+</defs>
+<rect x="8" y="8" width="496" height="496" rx="112" fill="url(#bg)"/>
+<rect x="8" y="8" width="496" height="496" rx="112" fill="url(#halo)"/>
+<rect x="10" y="10" width="492" height="492" rx="110" fill="none" stroke="url(#edge)" stroke-width="3"/>
+<path d="M151 127Q151 112 166 112H224V312Q224 324 236 324H368V379Q368 394 353 394H193Q151 394 151 352Z" fill="#071E2A" opacity=".55" transform="translate(0 9)"/>
+<path d="M151 127Q151 112 166 112H224V312Q224 324 236 324H368V379Q368 394 353 394H193Q151 394 151 352Z" fill="url(#mint)"/>
+<path d="M224 312Q224 324 236 324H368L303 389H193Q170 389 159 374L224 309Z" fill="#72C9BA" opacity=".3"/>
+<path d="M266 112L381 226Q393 238 381 250L331 300L280 249L296 233L215 153Z" fill="#100F30" opacity=".4" transform="translate(0 9)"/>
+<path d="M266 112L381 226Q393 238 381 250L331 300L280 249L296 233L215 153Z" fill="url(#violet)"/>
+<path d="M266 112L381 226Q387 232 387 238L353 237L240 128Z" fill="#F4EDFF" opacity=".2"/>
+<path d="M164 123H213V309" fill="none" stroke="#FFFFFF" stroke-opacity=".28" stroke-width="3" stroke-linecap="round"/>
+</svg>

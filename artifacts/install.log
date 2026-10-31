@@ -1,0 +1,3 @@
+Requirement already satisfied: python-mpv==1.0.8 in ./.venv/lib64/python3.14/site-packages (from -r /home/thekingsfather/apps/luma-desktop/requirements.txt (line 1)) (1.0.8)
+gtk-update-icon-cache: Cache file created successfully.
+Installed Luma TV in your applications menu.
