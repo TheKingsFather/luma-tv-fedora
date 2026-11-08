@@ -47,6 +47,21 @@ Your desktop must provide a Secret Service keyring (GNOME Keyring or an equivale
 
 Data: `$XDG_DATA_HOME/luma-desktop/session.enc` (normally `~/.local/share/luma-desktop/session.enc`). Preferences: Qt's `Luma/Desktop` settings. Video runs in-process; no external player or IPC socket is created. Downloaded subtitle files use a private temporary directory removed on stop. Subtitle downloads use separate requests without video-provider headers.
 
+### Repair after a Fedora Python upgrade
+
+If Luma stops opening with `ModuleNotFoundError: No module named 'mpv'` after a Python upgrade, run these commands from the project folder:
+
+```bash
+python3 install.py
+./launch.sh
+```
+
+The virtual environment's Python symlink can follow Fedora's new interpreter while its locally installed packages remain under the previous Python version. Rerunning the installer installs the pinned playback binding for the current interpreter. Your saved account and preferences are stored outside `.venv`.
+
+## AppImage packaging
+
+The [AppImage build instructions](packaging/appimage/README.md) describe the bundled runtime, offline checks and build requirements. The current builder targets Fedora 44 with Python 3.14; use that build environment rather than an upgraded source-launcher environment.
+
 ## Validation
 
 ```bash

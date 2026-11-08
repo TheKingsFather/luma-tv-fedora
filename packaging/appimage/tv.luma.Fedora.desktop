@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Luma TV
+GenericName=Stremio media client
+Comment=Your Stremio library in a glass desktop interface
+Exec=luma-tv
+Icon=luma
+StartupWMClass=tv.luma.Fedora
+Terminal=false
+Categories=AudioVideo;Video;Player;
+Keywords=Stremio;Luma;Movies;Series;TV;
+StartupNotify=true

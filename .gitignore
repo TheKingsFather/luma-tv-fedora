@@ -5,6 +5,10 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+build/
+dist/
+packaging/appimage/*.log
+packaging/appimage/*.png
 
 # Account state, credentials and machine-specific configuration
 .env
@@ -20,6 +24,7 @@ local.properties
 artifacts/pairing*.png
 artifacts/desktop.png
 artifacts/live-cards-*.png
+artifacts/appimage-*.log
 
 # Editor and desktop metadata
 .idea/

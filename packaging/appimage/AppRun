@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+APPDIR="${APPDIR:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}"
+export APPDIR
+export PATH="$APPDIR/usr/bin:$PATH"
+export PYTHONHOME="$APPDIR/usr"
+export PYTHONPATH="$APPDIR/usr/share/luma-tv"
+export PYTHONNOUSERSITE=1
+export PYTHONDONTWRITEBYTECODE=1
+export QT_PLUGIN_PATH="$APPDIR/usr/lib/qt6/plugins"
+export QT_QPA_PLATFORM_PLUGIN_PATH="$APPDIR/usr/lib/qt6/plugins/platforms"
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
+export PIPEWIRE_MODULE_DIR="$APPDIR/usr/lib/pipewire-0.3"
+export PIPEWIRE_CONFIG_DIR="$APPDIR/usr/share/pipewire"
+export SPA_PLUGIN_DIR="$APPDIR/usr/lib/spa-0.2"
+export ALSA_PLUGIN_DIR="$APPDIR/usr/lib/alsa-lib"
+export ALSA_CONFIG_DIR="$APPDIR/usr/share/alsa"
+export GIO_MODULE_DIR="$APPDIR/usr/lib/gio/modules"
+export GCONV_PATH="$APPDIR/usr/lib/gconv"
+export FONTCONFIG_PATH="$APPDIR/usr/etc/fonts"
+export FONTCONFIG_FILE="$APPDIR/usr/etc/fonts/fonts.conf"
+export SSL_CERT_FILE="$APPDIR/usr/share/luma-tv/cacert.pem"
+export REQUESTS_CA_BUNDLE="$SSL_CERT_FILE"
+export OPENSSL_MODULES="$APPDIR/usr/lib/ossl-modules"
+export LOCPATH="$APPDIR/usr/lib/locale"
+# Keep the bundled C library out of host shells and external helpers.
+unset LD_LIBRARY_PATH
+exec "$APPDIR/usr/lib/ld-linux-x86-64.so.2" --inhibit-cache \
+    --library-path "$APPDIR/usr/lib" "$APPDIR/usr/bin/python3.14" \
+    "$APPDIR/usr/share/luma-tv/launch.py" "$@"
