@@ -1,5 +1,7 @@
 """In-process libmpv engine and Qt OpenGL rendering. No player subprocess/window."""
 import locale
+import os
+from pathlib import Path
 import tempfile
 import time
 import mpv
@@ -18,6 +20,9 @@ class Player(QObject):
     tracks_changed=pyqtSignal(object)
     buffering=pyqtSignal(bool)
     release_surface=pyqtSignal()
+    recording_changed=pyqtSignal(bool,str)
+    recording_saved=pyqtSignal(str)
+    recording_error=pyqtSignal(str)
     received=pyqtSignal(int,object)
     def __init__(self,parent=None):
         super().__init__(parent)
@@ -25,6 +30,7 @@ class Player(QObject):
         self.streams=[];self.index=0;self.position=self.duration=0.
         self.paused=False;self.resume=0.;self.loading=False;self.headless=False
         self.ready=False;self.tracks=[];self.volume=100.;self.muted=False;self.cache_paused=False
+        self.media_loaded=False;self.recording_path=None;self.recording_started=0.;self._record_token=0;self._record_future=None
         self.received.connect(self._receive)
         self.timer=QTimer(self);self.timer.setInterval(500);self.timer.timeout.connect(self.tick)
 
@@ -38,7 +44,7 @@ class Player(QObject):
             self.ready=self.headless
             options=dict(vo='null' if self.headless else 'libmpv',osc=False,input_default_bindings=False,
                          input_vo_keyboard=False,terminal=False,config=False,idle=True,keep_open=False,
-                         hwdec='auto-safe',ytdl=False,network_timeout=15)
+                         hwdec='auto-safe',ytdl=False,network_timeout=15,cache=True)
             if self.headless:options['ao']='null'
             self.engine=mpv.MPV(**options)
             epoch=self.generation
@@ -61,14 +67,17 @@ class Player(QObject):
 
     def send(self,*command):
         if not self.engine:return
+        if command[:1]==('set_property',) and command[1] in ('aid','vid','sid'):
+            self.stop_recording()
         try:
             if command[0]=='set_property':self.engine[command[1]]=command[2]
             else:self.engine.command(*command)
-        except (ValueError,RuntimeError,mpv.ShutdownError):
+        except (ValueError,RuntimeError,SystemError,mpv.ShutdownError):
             self.message.emit('That playback action is not available for this source.')
 
     def load(self):
         if not self.engine or not self.ready or not self.streams:return
+        self.stop_recording();self.media_loaded=False
         stream=self.streams[self.index]
         headers=stream.get('behaviorHints',{}).get('proxyHeaders',{}).get('request',{})
         fields=[f'{k}: {v}' for k,v in headers.items() if '\n' not in str(k)+str(v) and '\r' not in str(k)+str(v)]
@@ -80,11 +89,16 @@ class Player(QObject):
         self.message.emit('Opening '+stream.get('name',stream.get('provider','your source')))
 
     def tick(self):
+        if self.recording:self.recording_changed.emit(True,str(self.recording_path))
         if self.loading and time.monotonic()>self.deadline:self.failover()
         if not self.ready and time.monotonic()>self.deadline:
             self.timer.stop();self.message.emit('Could not initialize the embedded video renderer. Check your graphics driver.')
 
     def _receive(self,epoch,event):
+        if event['event']=='recording-finished':
+            if event['token']==self._record_token and self.recording:
+                self._finish_recording(event['error'])
+            return
         if epoch!=self.generation or self.engine is None or not self.streams:return
         if event['event']=='property-change':
             name,value=event['name'],event.get('data')
@@ -97,10 +111,13 @@ class Player(QObject):
             elif name=='volume' and isinstance(value,(int,float)):self.volume=float(value)
             self.changed.emit(self.position,self.duration,self.paused)
         elif event['event']=='file-loaded':
-            self.loading=False
+            self.loading=False;self.media_loaded=True
             if self.resume:self.seek(self.resume);self.resume=0
             self.buffering.emit(False);self.message.emit('Playing in Luma')
+            self.recording_changed.emit(self.recording,str(self.recording_path or ''))
         elif event['event']=='end-file':
+            self.media_loaded=False;self.stop_recording()
+            self.recording_changed.emit(False,'')
             if event['reason']==mpv.MpvEventEndFile.ERROR:self.failover()
             elif event['reason']==mpv.MpvEventEndFile.EOF:self.finished.emit(True)
 
@@ -111,11 +128,74 @@ class Player(QObject):
         else:
             self.buffering.emit(False);self.message.emit('No source could play. Choose another source from the title page.')
 
+    @property
+    def recording(self):return self.recording_path is not None
+
+    @property
+    def recording_elapsed(self):return max(0,time.monotonic()-self.recording_started) if self.recording else 0
+
+    def start_recording(self,path):
+        if self.recording:return False
+        if not self.engine or not self.media_loaded or self.loading:
+            self.recording_error.emit('Start playback before recording.');return False
+        path=Path(path)
+        if path.suffix.lower()!='.mkv':
+            self.recording_error.emit('Choose a Matroska (.mkv) filename.');return False
+        try:
+            descriptor=os.open(path,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+            os.close(descriptor)
+        except FileExistsError:
+            self.recording_error.emit('That filename already exists. Choose a new name to keep the original.');return False
+        except OSError:
+            self.recording_error.emit('Could not save there. Choose a writable folder with free space.');return False
+        try:
+            future=self.engine.command_async('dump-cache',self.position,'no',str(path))
+        except (ValueError,RuntimeError,SystemError,mpv.ShutdownError):
+            if path.exists() and not path.stat().st_size:path.unlink()
+            self.recording_error.emit('This source could not start recording. Try another source.');return False
+        self.recording_path=path;self.recording_started=time.monotonic();self._record_future=future
+        self._record_token+=1;token=self._record_token
+        self.recording_changed.emit(True,str(path))
+        def completed(result):
+            try:
+                error=result.exception() is not None
+                self.received.emit(self.generation,{'event':'recording-finished','token':token,'error':error})
+            except RuntimeError:pass  # The owning Qt window has already closed.
+        future.add_done_callback(completed)
+        return self.recording
+
+    def _finish_recording(self,error=False):
+        path=self.recording_path
+        if path is None:return
+        self.recording_path=None;self._record_future=None;self._record_token+=1
+        self.recording_changed.emit(False,'')
+        try:
+            if path.stat().st_size:
+                self.recording_saved.emit(str(path))
+                if error:self.recording_error.emit('Recording ended early. Your partial recording was kept.')
+            else:
+                path.unlink()
+                self.recording_error.emit('No media was received for the recording. Try another source.')
+        except OSError:
+            self.recording_error.emit('The recording file could not be accessed. Check the destination folder.')
+
+    def stop_recording(self):
+        if not self.recording:return
+        # Invalidate the async completion before closing the writer. The stop
+        # command finalizes its container; playback and the GL surface continue.
+        self._record_token+=1;failed=False
+        try:
+            self.engine.command('dump-cache',0,0,'')
+        except (ValueError,RuntimeError,SystemError,mpv.ShutdownError):failed=True
+        self._finish_recording(failed)
+
     def pause(self):self.send('cycle','pause')
-    def seek(self,position):self.send('seek',max(0,position),'absolute')
+    def seek(self,position):
+        self.stop_recording();self.send('seek',max(0,position),'absolute')
     def stop(self):
         """Unload media while retaining the window's single native render context."""
-        self.timer.stop();self.streams=[];self.loading=False;self.tracks=[]
+        self.stop_recording()
+        self.timer.stop();self.streams=[];self.loading=False;self.tracks=[];self.media_loaded=False
         self.send('stop')
         if self.folder:self.folder.cleanup();self.folder=None
         self.buffering.emit(False)

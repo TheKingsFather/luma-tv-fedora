@@ -34,7 +34,7 @@ def self_test(render=False):
     from unittest.mock import patch
     from cryptography.fernet import Fernet
     from PyQt6.QtCore import QSettings, Qt
-    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication,QLineEdit
     import luma
     from backend import Client, Vault
 
@@ -130,6 +130,34 @@ def self_test(render=False):
                     window.restore_player()
                     app.processEvents()
                     assert not window.mini_mode and window.player.engine is engine
+                # Exercise the actual save dialog and recorder in the bundled
+                # Python/Qt/libmpv runtime, with no account or external stream.
+                window.play_title = {'id': 'fixture', 'name': 'Recording check', 'type': 'movie'}
+                window.settings.setValue('recordingDirectory', str(temporary))
+                window.player.pause()
+                wait_for(app, lambda: not window.player.paused, 'Resume before recording')
+                window.toggle_recording()
+                dialog = window._record_dialog
+                assert dialog is not None and dialog.isVisible()
+                if render:
+                    dialog.move(-5000, -5000)
+                before = window.player.position
+                wait_for(app, lambda: window.player.position > before + .2,
+                         'Playback with save window open')
+                recording = temporary / 'recording.mkv'
+                dialog.findChild(QLineEdit, 'fileNameEdit').setText(str(recording))
+                dialog.accept()
+                assert window.player.recording
+                before = window.player.position
+                wait_for(app, lambda: recording.stat().st_size > 0 and window.player.position > before + .2,
+                         'Recording while playback continues')
+                window.player.stop_recording()
+                assert not window.player.recording and recording.stat().st_size > 0
+                window.player.start([{'url': recording.as_uri(), 'name': 'Recorded fixture'}])
+                wait_for(app, lambda: window.player.media_loaded and window.player.position > .1,
+                         'Recorded video playback')
+                assert window.player.engine.video_dec_params
+                assert any(track.get('type') == 'audio' for track in window.player.tracks)
         finally:
             window.close()
             app.processEvents()
@@ -146,11 +174,12 @@ def self_test(render=False):
         connection = SimpleNamespace()
         requests.adapters.HTTPAdapter().cert_verify(connection, 'https://example.org', True, None)
         assert connection.ca_certs == str(ROOT / 'cacert.pem')
-        print(json.dumps({'result': 'passed', 'app': 'Luma TV', 'version': '0.3.0',
+        print(json.dumps({'result': 'passed', 'app': 'Luma TV', 'version': luma.VERSION,
                           'python': sys.version.split()[0],
                           'checks': ['GUI startup', 'bundled libmpv H.264/AAC decode',
                                      'pause and seek', 'encrypted temporary vault',
-                                     'CA certificates', 'isolated preferences'] +
+                                     'CA certificates', 'isolated preferences', 'nonblocking recording dialog',
+                                     'recording start/stop and recorded video/audio playback'] +
                                     (['embedded OpenGL frames', 'mini player'] if render else [])}),
               flush=True)
     return 0

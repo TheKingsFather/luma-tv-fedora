@@ -1,0 +1,52 @@
+test_grid_reflows_when_viewport_grows_and_shrinks (test_cards.ArtworkTests.test_grid_reflows_when_viewport_grows_and_shrinks) ... ok
+test_live_cards_are_wide_and_keyboard_activatable (test_cards.ArtworkTests.test_live_cards_are_wide_and_keyboard_activatable) ... ok
+test_logo_renders_at_launcher_sizes (test_cards.ArtworkTests.test_logo_renders_at_launcher_sizes) ... ok
+test_wide_preview_retains_both_edges_in_portrait_frame (test_cards.ArtworkTests.test_wide_preview_retains_both_edges_in_portrait_frame) ... ok
+test_live_player_back_returns_to_the_same_cards (test_embedded.EmbeddedTests.test_live_player_back_returns_to_the_same_cards) ... skipped 'Real OpenGL requires the isolated xcb test run'
+test_mini_player_preserves_video_during_browsing_and_repeated_restore (test_embedded.EmbeddedTests.test_mini_player_preserves_video_during_browsing_and_repeated_restore) ... skipped 'Real OpenGL requires the isolated xcb test run'
+test_real_video_is_inside_luma_and_controls_work (test_embedded.EmbeddedTests.test_real_video_is_inside_luma_and_controls_work) ... skipped 'Real OpenGL requires the isolated xcb test run'
+test_recording_keeps_native_video_and_mini_player_running (test_embedded.EmbeddedTests.test_recording_keeps_native_video_and_mini_player_running) ... skipped 'Real OpenGL requires the isolated xcb test run'
+test_repeated_playback_and_source_switch_cleanup (test_embedded.EmbeddedTests.test_repeated_playback_and_source_switch_cleanup) ... skipped 'Real OpenGL requires the isolated xcb test run'
+test_anime_and_download_libraries_are_not_live (test_luma.ProtocolTests.test_anime_and_download_libraries_are_not_live) ... ok
+test_capabilities (test_luma.ProtocolTests.test_capabilities) ... ok
+test_catalog_items_inherit_live_type_when_omitted (test_luma.ProtocolTests.test_catalog_items_inherit_live_type_when_omitted) ... ok
+test_empty_prefixes_deny (test_luma.ProtocolTests.test_empty_prefixes_deny) ... ok
+test_encrypted_atomic_state (test_luma.ProtocolTests.test_encrypted_atomic_state) ... ok
+test_explicit_live_categories (test_luma.ProtocolTests.test_explicit_live_categories) ... ok
+test_future_episodes (test_luma.ProtocolTests.test_future_episodes) ... ok
+test_library_queue_survives_offline (test_luma.ProtocolTests.test_library_queue_survives_offline) ... ok
+test_live_catalogs_are_not_cut_off_after_eight_rows (test_luma.ProtocolTests.test_live_catalogs_are_not_cut_off_after_eight_rows) ... ok
+test_live_manifest_hydration_and_offline_fallback (test_luma.ProtocolTests.test_live_manifest_hydration_and_offline_fallback) ... ok
+test_metadata_merges_without_duplicate_keys (test_luma.ProtocolTests.test_metadata_merges_without_duplicate_keys) ... ok
+test_nullable_extra_lists (test_luma.ProtocolTests.test_nullable_extra_lists) ... ok
+test_only_direct_streams (test_luma.ProtocolTests.test_only_direct_streams) ... ok
+test_pending_error (test_luma.ProtocolTests.test_pending_error) ... ok
+test_required_search_not_browseable (test_luma.ProtocolTests.test_required_search_not_browseable) ... ok
+test_resume_completion (test_luma.ProtocolTests.test_resume_completion) ... ok
+test_tv_replays_and_highlights_are_not_live (test_luma.ProtocolTests.test_tv_replays_and_highlights_are_not_live) ... ok
+test_url_encoding (test_luma.ProtocolTests.test_url_encoding) ... ok
+test_back_restores_grid_artwork_pagination_and_scroll_without_requests (test_navigation.NavigationTests.test_back_restores_grid_artwork_pagination_and_scroll_without_requests) ... ok
+test_late_catalog_result_updates_hidden_cache_without_navigation (test_navigation.NavigationTests.test_late_catalog_result_updates_hidden_cache_without_navigation) ... ok
+test_leaving_section_invalidates_cache_and_return_refreshes_once (test_navigation.NavigationTests.test_leaving_section_invalidates_cache_and_return_refreshes_once) ... ok
+test_live_same_tab_and_details_back_reuse_home_horizontal_scroll (test_navigation.NavigationTests.test_live_same_tab_and_details_back_reuse_home_horizontal_scroll) ... ok
+test_old_section_response_is_discarded_and_live_eof_returns_to_cache (test_navigation.NavigationTests.test_old_section_response_is_discarded_and_live_eof_returns_to_cache) ... ok
+test_async_recording_failure_cleans_empty_file_and_resets_state (test_recording.RecordingTests.test_async_recording_failure_cleans_empty_file_and_resets_state) ... ok
+test_authenticated_http_transport_stream_records_without_an_extra_connection (test_recording.RecordingTests.test_authenticated_http_transport_stream_records_without_an_extra_connection) ... ok
+test_end_of_playback_finalizes_recording_once (test_recording.RecordingTests.test_end_of_playback_finalizes_recording_once) ... ok
+test_existing_files_bad_destinations_and_idle_player_are_preserved (test_recording.RecordingTests.test_existing_files_bad_destinations_and_idle_player_are_preserved) ... ok
+test_native_stop_error_keeps_recording_and_playback_alive (test_recording.RecordingTests.test_native_stop_error_keeps_recording_and_playback_alive) ... ok
+test_seek_finishes_recording_and_a_second_recording_can_start (test_recording.RecordingTests.test_seek_finishes_recording_and_a_second_recording_can_start) ... ok
+test_start_stop_writes_playable_audio_video_without_replacing_engine (test_recording.RecordingTests.test_start_stop_writes_playable_audio_video_without_replacing_engine) ... ok
+test_switching_source_and_shutdown_each_finalize_the_file (test_recording.RecordingTests.test_switching_source_and_shutdown_each_finalize_the_file) ... ok
+test_active_indicator_persists_when_controls_hide_and_in_mini_mode (test_recording.RecordingUiTests.test_active_indicator_persists_when_controls_hide_and_in_mini_mode) ... ok
+test_closing_window_cancels_pending_recording (test_recording.RecordingUiTests.test_closing_window_cancels_pending_recording) ... ok
+test_record_button_picker_and_real_recording_keep_playback_responsive (test_recording.RecordingUiTests.test_record_button_picker_and_real_recording_keep_playback_responsive) ... ok
+test_save_dialog_cancel_and_success_remembers_folder (test_recording.RecordingUiTests.test_save_dialog_cancel_and_success_remembers_folder) ... ok
+test_save_window_belongs_to_the_visible_mini_player (test_recording.RecordingUiTests.test_save_window_belongs_to_the_visible_mini_player) ... ok
+test_saved_notice_has_a_folder_action_and_shortcut_is_local (test_recording.RecordingUiTests.test_saved_notice_has_a_folder_action_and_shortcut_is_local) ... ok
+test_source_change_while_choosing_a_filename_does_not_record_the_wrong_title (test_recording.RecordingUiTests.test_source_change_while_choosing_a_filename_does_not_record_the_wrong_title) ... ok
+
+----------------------------------------------------------------------
+Ran 47 tests in 17.202s
+
+OK (skipped=5)

@@ -1,0 +1,26 @@
+test_live_player_back_returns_to_the_same_cards (test_embedded.EmbeddedTests.test_live_player_back_returns_to_the_same_cards) ... Cannot load libcuda.so.1
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+ok
+test_mini_player_preserves_video_during_browsing_and_repeated_restore (test_embedded.EmbeddedTests.test_mini_player_preserves_video_during_browsing_and_repeated_restore) ... Cannot load libcuda.so.1
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+ok
+test_real_video_is_inside_luma_and_controls_work (test_embedded.EmbeddedTests.test_real_video_is_inside_luma_and_controls_work) ... Cannot load libcuda.so.1
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+ok
+test_recording_keeps_native_video_and_mini_player_running (test_embedded.EmbeddedTests.test_recording_keeps_native_video_and_mini_player_running) ... Cannot load libcuda.so.1
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+ok
+test_repeated_playback_and_source_switch_cleanup (test_embedded.EmbeddedTests.test_repeated_playback_and_source_switch_cleanup) ... Cannot load libcuda.so.1
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 60.208s
+
+OK

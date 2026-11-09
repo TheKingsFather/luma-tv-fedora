@@ -1,6 +1,6 @@
 # Luma TV for Fedora
 
-Native Qt desktop edition of Luma, with the teal/violet glass theme, Stremio QR pairing and mpv video playback. Version 0.3.0.
+Native Qt desktop edition of Luma, with the teal/violet glass theme, Stremio QR pairing and mpv video playback. Version 0.4.0.
 
 Source repository: [TheKingsFather/luma-tv-fedora](https://github.com/TheKingsFather/luma-tv-fedora) (private).
 
@@ -19,10 +19,23 @@ The **Explore the interface** button opens public Cinemeta catalogs before conne
 - Direct stream discovery, provider request headers, source selection and failover.
 - Embedded libmpv playback inside Luma, with pause, seek, audio/subtitle selection, add-on subtitle downloads, next episode and sleep timer controls in Luma.
 - Floating, resizable mini player with compact glass controls; keep watching while browsing or using other apps.
+- Record the current source to a local video file, with an elapsed timer and a persistent indicator in full and mini player modes.
 - Continue watching and watch-state sync. Offline changes are saved locally and retried on refresh or subsequent writes.
 - Encrypted account/cache file. Its encryption key is stored in Fedora's Secret Service keyring. The app never writes an unencrypted Stremio auth key to disk or passes stream URLs in mpv's command-line arguments.
 
 Playback renders directly into Luma’s video surface with glass controls. It supports direct HTTP(S) streams, not raw torrent/infoHash-only sources. DRM setup and Alder's native FFmpeg/chapter extensions are not included. Connect your account using QR pairing to import your add-ons and library.
+
+## Record a stream
+
+During playback, click **● Record** in the player header, or press **Ctrl+R** while the player has focus. Choose a filename; the default folder is **Videos/Luma Recordings**, and Luma remembers your chosen folder. Recordings use Matroska (`.mkv`) and preserve the source's original quality without re-encoding or opening a second stream connection.
+
+The control turns **red** and becomes **Stop** with an elapsed timer. A red recording badge remains visible when the playback controls fade, and the mini player has its own red stop control. Click **Stop** or press **Ctrl+R** again to finish the file. The saved notice includes **Open folder**.
+
+The save window opens asynchronously inside Qt so video keeps playing while you choose a filename. It belongs to the visible player window, including the always-on-top mini player. Cancelling leaves playback running without starting a recording.
+
+Seeking, changing source or tracks, stopping playback, reaching the end, and closing Luma finish the current recording. Moving between the full and mini player keeps it running. Existing files are never overwritten.
+
+Recording uses mpv's continuous cache dump, so clips can begin at a nearby keyframe and include buffered video ahead of the playhead. Some source formats cannot be recorded into Matroska; unsupported recordings report an error, and empty output files are removed. If recording ends with an error after writing data, Luma keeps the partial file. See the [mpv recording reference](https://mpv.io/manual/stable/).
 
 ## Controls
 
@@ -60,7 +73,7 @@ The virtual environment's Python symlink can follow Fedora's new interpreter whi
 
 ## AppImage packaging
 
-The [AppImage build instructions](packaging/appimage/README.md) describe the bundled runtime, offline checks and build requirements. The current builder targets Fedora 44 with Python 3.14; use that build environment rather than an upgraded source-launcher environment.
+Download the x86_64 AppImage or source archive from [GitHub Releases](https://github.com/TheKingsFather/luma-tv-fedora/releases/latest). The [AppImage build instructions](packaging/appimage/README.md) describe the bundled runtime, checks and build requirements. A full runtime build targets Fedora 44 with Python 3.14; application files can also be refreshed in an existing AppDir using `--repack`.
 
 ## Validation
 
@@ -70,7 +83,7 @@ QT_QPA_PLATFORM=xcb .venv/bin/python -m unittest discover -s tests -p test_embed
 QT_QPA_PLATFORM=offscreen ./launch.sh --preview --smoke
 ```
 
-The suite contains 34 checks. The offscreen run passes 30 and skips the four real OpenGL checks. A separate xcb run verifies Live playback returning to the same cached cards, decoded frames inside Luma’s framebuffer, pause/seek, audio tracks, resizing, source switching, repeated browse/play transitions and final cleanup. Local engine playback also checks that no player subprocess is launched. See `artifacts/tests.log`, `artifacts/render-tests.log` and the UI screenshots.
+The offscreen checks cover browsing, navigation, recording and local engine playback. Recording fixtures verify playable audio/video files, an authenticated local HTTP transport stream without another connection, existing-file protection, error cleanup and finishing recordings on seek, source changes, end-of-playback and shutdown. A separate xcb run verifies decoded frames inside Luma’s framebuffer, playback controls, resizing, repeated browse/play transitions, mini-player recording and final cleanup. See `artifacts/tests.log`, `artifacts/render-tests.log` and the UI screenshots.
 
 Live API tests create an unclaimed temporary pairing code; they never connect an account or write to a real library.
 
@@ -115,3 +128,9 @@ Pending catalog and artwork requests can complete on retained pages without navi
 The full player’s Mini player button moves the existing video surface into a resizable, always-on-top window with glass pause, seek, mute, restore and close controls. The main window returns to its cached listing and remains usable while playback continues. Returning to full playback preserves position, pause state, tracks, volume and the same libmpv engine and render context. Starting another title replaces the current stream. Closing the mini player stops playback and leaves the current browse page intact; closing Luma shuts down both windows. Live end-of-stream closes the mini player without reloading browse cards.
 
 Qt OpenGL context sharing is enabled before application creation so moving the video widget between windows preserves its render context ([Qt resource-sharing documentation](https://doc.qt.io/qt-6/qopenglwidget.html#resource-sharing)). Real video checks cover repeated mini/full transitions without reloading the source, pause/play, resizing, independent visibility when Luma is minimized, browsing, Live completion, closing PiP and closing Luma while PiP is active. The fixture screenshot is `artifacts/mini-player.png`.
+
+## 0.4.0 — Recording and responsive controls
+
+Record the current source to Matroska with Ctrl+R or the player’s Record button. Full-player, mini-player and hidden-controls indicators turn solid red while recording, with an elapsed timer and a saved-file folder action. Seeking, source or track changes, stopping playback and closing Luma finish the recording cleanly.
+
+The save window opens asynchronously in Qt, keeping the video event loop active and attaching to the visible player window. Recording buttons are restyled only when their state changes. The release includes the updated x86_64 AppImage, a source archive and SHA-256 checksums.

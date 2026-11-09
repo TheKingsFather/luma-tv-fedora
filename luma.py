@@ -3,6 +3,7 @@
 import concurrent.futures as futures
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -10,15 +11,16 @@ from urllib.parse import urlsplit
 
 import requests
 from PyQt6 import sip
-from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, QSettings, QSize
+from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, QSettings, QSize, QStandardPaths
 from PyQt6.QtGui import QColor, QPainter, QLinearGradient, QRadialGradient, QPixmap, QIcon, QShortcut, QKeySequence
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea, QLineEdit, QDialog, QComboBox, QMessageBox, QSlider, QSizePolicy)
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea, QLineEdit, QDialog, QComboBox, QMessageBox, QSlider, QSizePolicy, QFileDialog)
 from backend import Client, request, browseable, extra, future_video, UA, LIVE_TYPES, catalog_choices
 from player import Player
 from cards import MediaCard, Artwork, ResponsiveGrid
 from player_view import PlaybackView,MiniPlayer
 
 ROOT = Path(__file__).resolve().parent
+VERSION = '0.4.0'
 POOL = futures.ThreadPoolExecutor(8)
 IMAGES = futures.ThreadPoolExecutor(4)
 WRITES = futures.ThreadPoolExecutor(1)
@@ -90,6 +92,7 @@ class Window(QMainWindow):
         self.pair_timer=QTimer(self);self.pair_timer.setInterval(2500);self.pair_timer.timeout.connect(self.poll_pair)
         self.player=Player(self);self.player.changed.connect(self.playback_changed);self.player.finished.connect(self.playback_finished);self.player.message.connect(self.notice)
         self.play_title=None;self.play_video='';self.last_position=0;self.watched=0;self.last_sync=0;self.play_key='';self.episode_count=0
+        self._record_dialog=None
         self.playback_sync=QTimer(self);self.playback_sync.setInterval(15000);self.playback_sync.timeout.connect(self.sync_progress);self.playback_sync.start()
         self.sleep_timer=QTimer(self);self.sleep_timer.setSingleShot(True);self.sleep_timer.timeout.connect(self.player.pause)
         self.image_cache={};self.tab='Home'
@@ -426,7 +429,7 @@ class Window(QMainWindow):
     def now_playing(self,restoring=False):
         self.current='Playing';self.statusBar().hide()
         if self.playback_view is None:
-            self.playback_view=PlaybackView(self.player,self.play_title.get('name',''),self.stop_playback,self.tracks,self.player_sources,self.next_episode,self.sleep_menu,self.toggle_fullscreen,mini=self.enter_mini_player)
+            self.playback_view=PlaybackView(self.player,self.play_title.get('name',''),self.stop_playback,self.tracks,self.player_sources,self.next_episode,self.sleep_menu,self.toggle_fullscreen,mini=self.enter_mini_player,record=self.toggle_recording)
             self.stack.addWidget(self.playback_view)
             self.playback_view.restore_requested.connect(self.restore_player)
             self.playback_view.stop_requested.connect(self.stop_playback)
@@ -535,6 +538,45 @@ class Window(QMainWindow):
         for name,minutes in [('Off',0),('In 30 minutes',30),('In 60 minutes',60)]:box.addWidget(button(name,lambda _,m=minutes:(self.sleep_timer.stop(),self.sleep_timer.start(m*60000) if m else None,dialog.accept())))
         dialog.exec()
 
+    def toggle_recording(self):
+        if self.player.recording:
+            self.player.stop_recording();return
+        if self._record_dialog is not None:
+            self._record_dialog.raise_();self._record_dialog.activateWindow();return
+        if not self.play_title or not self.player.media_loaded:return
+        source=self.player.streams
+        movies=QStandardPaths.writableLocation(QStandardPaths.StandardLocation.MoviesLocation) or str(Path.home()/'Videos')
+        folder=Path(self.settings.value('recordingDirectory',str(Path(movies)/'Luma Recordings')))
+        try:folder.mkdir(parents=True,exist_ok=True)
+        except OSError:folder=Path.home()
+        title=re.sub(r'[^\w\s.()-]','',self.play_title.get('name','Recording')).strip(' .')[:90] or 'Recording'
+        while len(title.encode('utf-8'))>160:title=title[:-1]
+        name=title+' — '+time.strftime('%Y-%m-%d %H-%M-%S')+'.mkv'
+        # Keep Qt's normal event loop rendering video while choosing a file.
+        # A native, blocking picker can stall the embedded GL player or appear
+        # behind the always-on-top mini player. Own it from the visible player.
+        parent=self.playback_view.window() if self.playback_view else self
+        dialog=QFileDialog(parent)
+        dialog.setOptions(QFileDialog.Option.DontUseNativeDialog|QFileDialog.Option.DontConfirmOverwrite)
+        dialog.setStyleSheet('QAbstractItemView {background:#132334;color:#F1F7FF;selection-background-color:#3F6368;selection-color:white;border:1px solid #425A6D;} '
+                             'QHeaderView::section {background:#213B4B;color:#F1F7FF;border:0;padding:6px;} '
+                             'QToolButton {background:#8BA6B7;color:#10272C;border-radius:6px;padding:4px;} '
+                             'QToolButton:hover,QToolButton:checked {background:#C7F8E5;}')
+        dialog.setWindowTitle('Save recording');dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        dialog.setFileMode(QFileDialog.FileMode.AnyFile);dialog.setNameFilter('Matroska video (*.mkv)')
+        dialog.setDefaultSuffix('mkv');dialog.setDirectory(str(folder));dialog.selectFile(name)
+        dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        def selected(chosen):
+            if self.player.streams is not source:
+                self.player.recording_error.emit('The source changed. Start a new recording.');return
+            path=Path(chosen)
+            if path.suffix.lower()!='.mkv':path=Path(str(path)+'.mkv')
+            if self.player.start_recording(path):self.settings.setValue('recordingDirectory',str(path.parent))
+        def finished(_):
+            if self._record_dialog is dialog:self._record_dialog=None
+        dialog.fileSelected.connect(selected);dialog.finished.connect(finished);dialog.destroyed.connect(finished)
+        self._record_dialog=dialog;dialog.open()
+
     def stop_playback(self):
         if self.mini_mode:
             self.sync_progress();self.player.stop();self.play_title=None;self.dock_player();return
@@ -578,7 +620,7 @@ class Window(QMainWindow):
         if self.client.connected:box.addWidget(button('Disconnect this desktop',self.disconnect))
         for key,name,default in [('chooseSource','Always choose a source',False),('autoplay','Play the next episode',True)]:
             enabled=self.settings.value(key,default,type=bool);b=button(name+('  ·  On' if enabled else '  ·  Off'),lambda _,k=key,e=enabled:(self.settings.setValue(k,not e),self.settings_page()));box.addWidget(b)
-        box.addWidget(label('Manage add-ons in Stremio on your phone, then refresh them here.',13,'#AEBED1'));self.layout.addWidget(panel);self.layout.addStretch();self.layout.addWidget(label('Luma TV for Fedora  0.3.0    ·    F11 fullscreen    ·    Playback powered by mpv',12,'#A2B8C9'))
+        box.addWidget(label('Manage add-ons in Stremio on your phone, then refresh them here.',13,'#AEBED1'));self.layout.addWidget(panel);self.layout.addStretch();self.layout.addWidget(label(f'Luma TV for Fedora  {VERSION}    ·    F11 fullscreen    ·    Playback powered by mpv',12,'#A2B8C9'))
 
     def refresh_stremio(self):
         self.clear_browse_cache()
@@ -598,6 +640,7 @@ class Window(QMainWindow):
         else:self.pair()
 
     def closeEvent(self,event):
+        if self._record_dialog is not None:self._record_dialog.reject()
         self._page_serial+=1;self.generation=self._page_serial;self.clear_browse_cache()
         self.pair_timer.stop();self.sync_progress();self.dock_player();self.player.shutdown();self.playback_sync.stop();event.accept()
 

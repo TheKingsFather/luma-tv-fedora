@@ -4,6 +4,7 @@ Run with the app's virtualenv Python. No provider settings or keyring data are r
 The explicit bundled ELF loader keeps native dependencies together, including libc.
 """
 import hashlib
+import datetime
 import importlib.util
 import json
 import os
@@ -25,6 +26,8 @@ PYTHON = APP / 'usr/lib/python3.14'
 SITE = PYTHON / 'site-packages'
 DATA = APP / 'usr/share/luma-tv'
 NATIVE_SOURCES = set()
+SOURCE_FILES = ('luma.py', 'backend.py', 'cards.py', 'player.py', 'player_view.py')
+VERSION = '0.4.0'
 
 
 def copy(source, destination):
@@ -130,7 +133,44 @@ def write_image(runtime):
                       'sha256': checksum}), flush=True)
 
 
+def repack():
+    """Refresh application files using an existing, self-contained native runtime."""
+    manifest_path = DATA / 'build-manifest.json'
+    runtime = BUILD / 'runtime-x86_64'
+    if not manifest_path.is_file() or not runtime.is_file():
+        raise SystemExit('Repacking requires an existing build/appimage/Luma-TV.AppDir and runtime-x86_64.')
+    manifest = json.loads(manifest_path.read_text())
+    if (manifest.get('app') != 'Luma TV' or manifest.get('architecture') != 'x86_64'
+            or not manifest.get('python', '').startswith('3.14.')
+            or hashlib.sha256(runtime.read_bytes()).hexdigest() != manifest['runtime']['sha256']):
+        raise SystemExit('The existing AppDir does not match the expected Luma TV Python 3.14 runtime.')
+    base_manifest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    for name in SOURCE_FILES:
+        copy(SOURCE / name, DATA / name)
+    copy(HERE / 'launch.py', DATA / 'launch.py')
+    copy(HERE / 'AppRun', APP / 'AppRun').chmod(0o755)
+    copy(HERE / 'tv.luma.Fedora.desktop', APP / 'tv.luma.Fedora.desktop')
+    copy(SOURCE / 'luma.svg', APP / 'luma.svg')
+    copy(SOURCE / 'luma.svg', DATA / 'luma.svg')
+    for cache in DATA.rglob('__pycache__'):
+        shutil.rmtree(cache)
+    manifest.update(version=VERSION,
+                    source_sha256={name: hashlib.sha256((SOURCE / name).read_bytes()).hexdigest()
+                                   for name in SOURCE_FILES},
+                    repack={'base_manifest_sha256': base_manifest,
+                            'host_os': Path('/etc/os-release').read_text(),
+                            'created_utc': datetime.datetime.now(datetime.timezone.utc).isoformat()})
+    manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
+    subprocess.run(['desktop-file-validate', str(APP / 'tv.luma.Fedora.desktop')], check=True)
+    write_image(runtime)
+
+
 def main():
+    if sys.argv[1:] == ['--repack']:
+        repack()
+        return
+    if sys.argv[1:]:
+        raise SystemExit('Usage: build.py [--repack]')
     if sys.version_info[:2] != (3, 14):
         raise SystemExit('This AppImage builder requires Python 3.14 on Fedora 44. '
                          'Use that build environment; the source launcher can use the current Fedora Python.')
@@ -206,7 +246,7 @@ def main():
                      '<include ignore_missing="yes">/etc/fonts/conf.d</include></fontconfig>')
     import certifi
     copy(certifi.where(), DATA / 'cacert.pem')
-    for name in ('luma.py', 'backend.py', 'cards.py', 'player.py', 'player_view.py'):
+    for name in SOURCE_FILES:
         copy(SOURCE / name, DATA / name)
     subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
                     '-f', 'lavfi', '-i', 'testsrc2=size=160x90:rate=10',
@@ -243,7 +283,7 @@ def main():
     for metadata in Path(importlib.util.find_spec('mpv').origin).parent.glob('*.dist-info'):
         if metadata.name.lower().startswith('python_mpv-'):
             copy(metadata, SITE / metadata.name)
-    manifest = {'app': 'Luma TV', 'version': '0.3.0', 'architecture': 'x86_64',
+    manifest = {'app': 'Luma TV', 'version': VERSION, 'architecture': 'x86_64',
                 'build_os': Path('/etc/os-release').read_text(),
                 'python': sys.version, 'runtime': provenance, 'rpm_packages': packages,
                 'source_sha256': {name: hashlib.sha256((SOURCE / name).read_bytes()).hexdigest()

@@ -1,0 +1,51 @@
+Luma TV for Fedora v0.4.0 — 9 November 2026
+
+Release changes
+---------------
+Current-source Matroska recording; Ctrl+R; solid red active controls in the
+full player, mini player and hidden-controls badge; elapsed time; saved-file
+folder action; existing-file protection; recording completion on playback
+changes and shutdown. The save window opens asynchronously in Qt and belongs
+to the visible player. Button styling changes only on recording transitions.
+
+The packaged-runtime check reproduced an mpv SystemError when stopping a
+recording. Command errors are now handled without escaping through Qt's close
+event. A regression check verifies that the saved file remains playable and
+playback continues after a native stop error.
+
+Source validation
+-----------------
+42 offline checks passed. Coverage includes local libmpv video/audio recording,
+ffprobe stream inspection, ffmpeg decoding, authenticated local HTTP input,
+recording lifecycle, real Qt save-window interaction and timer responsiveness,
+source changes, cancellation, mini-player dialog ownership, rendered red/idle
+button colors, navigation, cards and protocol behavior. Five graphics tests
+are skipped by the offscreen runner and run separately below.
+
+All 5 xcb/OpenGL checks passed, including native video frames during the actual
+recording save dialog, continued recording through mini/full transitions,
+controls, resizing, repeated playback and engine cleanup. Graphics fixtures
+use generated video and stub unrelated catalog requests for deterministic
+navigation. Their preferences are isolated from the user's settings.
+
+Logs: recording-release-tests.log, recording-release-render-tests.log.
+
+Release AppImage validation
+---------------------------
+Both the final AppImage's --self-test and --self-test-render passed using
+--appimage-extract-and-run. They verify startup, icon, bundled H.264/AAC
+decoding, pause/seek, temporary encrypted vault, isolated preferences, CA
+loading, the nonblocking save window, recording start/stop and playback of
+the recorded video/audio. The render check also verifies OpenGL frame content
+and mini-player transitions. Test audio is muted or sent to the null output.
+
+The AppImage retains the established Fedora 44 x86_64/Python 3.14.8 native
+runtime, with updated application and launcher files. It was checked on the
+current Fedora desktop. The embedded source SHA-256 inventory and launcher
+were read from the finished AppImage and matched to the release tree.
+
+Logs: release-appimage-self-test.log, release-appimage-render-test.log.
+
+Two external-service integration tests and physical speaker output are outside
+this release validation. No account, provider credentials or personal recordings
+are included in the downloads. The included UI images use generated fixtures.

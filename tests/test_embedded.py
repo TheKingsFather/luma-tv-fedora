@@ -6,8 +6,8 @@ import subprocess
 import unittest
 from unittest.mock import patch
 from pathlib import Path
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication,QLineEdit
+from PyQt6.QtCore import Qt,QSettings
 from PyQt6.QtTest import QTest
 from luma import Window,STYLE
 from cards import MediaCard
@@ -18,6 +18,13 @@ APP.setStyle('Fusion');APP.setStyleSheet(STYLE)
 
 @unittest.skipUnless(os.environ.get('QT_QPA_PLATFORM')=='xcb','Real OpenGL requires the isolated xcb test run')
 class EmbeddedTests(unittest.TestCase):
+    def setUp(self):
+        # Catalog requests are unrelated to rendering and can race a test's
+        # playback navigation. Keep this suite entirely on local fixtures.
+        for name,replacement in [('refresh',{'return_value':None}),('refresh_addons',{'return_value':None}),
+                                 ('catalog',{'return_value':[]}),('meta',{'side_effect':lambda title:title})]:
+            mocked=patch('backend.Client.'+name,**replacement)
+            mocked.start();self.addCleanup(mocked.stop)
     @classmethod
     def setUpClass(cls):
         cls.folder=tempfile.TemporaryDirectory(prefix='luma-render-test-')
@@ -28,6 +35,7 @@ class EmbeddedTests(unittest.TestCase):
 
     def window(self):
         w=Window(preview=True)
+        w.settings=QSettings(str(Path(self.folder.name)/'settings.ini'),QSettings.Format.IniFormat)
         w.setWindowFlags(Qt.WindowType.FramelessWindowHint|Qt.WindowType.BypassWindowManagerHint|Qt.WindowType.WindowDoesNotAcceptFocus)
         w.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         w.resize(1280,800);w.move(-5000,-5000);w.show()
@@ -44,7 +52,8 @@ class EmbeddedTests(unittest.TestCase):
                 colors={image.pixelColor(int(image.width()*x),int(image.height()*y)).rgb() for x in (.2,.35,.5,.65,.8) for y in (.25,.5,.75)}
                 if len(colors)>5:return image
             time.sleep(.025)
-        self.fail('No decoded video frames reached Luma’s framebuffer')
+        self.fail(f'No decoded video frames reached Luma’s framebuffer: position={w.player.position}, '
+                  f'frames={w.playback_view.video.frames}, loaded={w.player.media_loaded}, loading={w.player.loading}')
 
     def test_real_video_is_inside_luma_and_controls_work(self):
         w=self.window()
@@ -71,6 +80,40 @@ class EmbeddedTests(unittest.TestCase):
             w.toggle_fullscreen();APP.processEvents();self.assertTrue(w.isFullScreen())
             w.toggle_fullscreen();APP.processEvents();self.assertFalse(w.isFullScreen())
             w.stop_playback();APP.processEvents();self.assertFalse(w.player.streams);self.assertEqual(w.current,'Details')
+        finally:w.close();APP.processEvents();self.assertIsNone(w.player.engine)
+
+    def test_recording_keeps_native_video_and_mini_player_running(self):
+        class QuietMini(MiniPlayer):
+            def __init__(self,*args):
+                super().__init__(*args)
+                self.setWindowFlags(self.windowFlags()|Qt.WindowType.BypassWindowManagerHint|Qt.WindowType.WindowDoesNotAcceptFocus)
+                self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+            def move(self,*args):super().move(-5000,-5000)
+        w=self.window()
+        try:
+            self.wait_frame(w);engine=w.player.engine;surface=w.playback_view.video;context=surface.render_context
+            path=Path(self.folder.name)/'embedded-recording.mkv'
+            w.settings.setValue('recordingDirectory',self.folder.name)
+            QTest.mouseClick(w.playback_view.record_button,Qt.MouseButton.LeftButton)
+            dialog=w._record_dialog;self.assertTrue(dialog.isVisible());dialog.move(-5000,-5000)
+            before=w.player.position;frames=surface.frames;deadline=time.monotonic()+5
+            while w.player.position<before+.3 and time.monotonic()<deadline:APP.processEvents();time.sleep(.02)
+            self.assertGreater(w.player.position,before+.2);self.assertGreater(surface.frames,frames)
+            dialog.findChild(QLineEdit,'fileNameEdit').setText(str(path));dialog.accept()
+            self.assertTrue(w.player.recording)
+            deadline=time.monotonic()+5
+            while path.stat().st_size<1024 and time.monotonic()<deadline:APP.processEvents();time.sleep(.02)
+            self.assertGreater(path.stat().st_size,1024)
+            w.playback_view.show_controls();APP.processEvents()
+            w.grab().save(str(Path(__file__).parents[1]/'artifacts/recording-embedded.png'))
+            with patch('luma.MiniPlayer',QuietMini),patch.object(w,'home',lambda *args,**kwargs:None):
+                w.enter_mini_player();self.wait_frame(w)
+                self.assertTrue(w.player.recording);self.assertIs(w.player.engine,engine)
+                self.assertIs(surface.render_context,context)
+                QTest.mouseClick(w.playback_view.mini_record,Qt.MouseButton.LeftButton);APP.processEvents()
+                self.assertFalse(w.player.recording);self.assertIs(w.player.engine,engine)
+                w.restore_player();self.wait_frame(w)
+            subprocess.run(['ffmpeg','-v','error','-i',str(path),'-f','null','-'],check=True,capture_output=True)
         finally:w.close();APP.processEvents();self.assertIsNone(w.player.engine)
 
     def test_live_player_back_returns_to_the_same_cards(self):
