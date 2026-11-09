@@ -15,6 +15,7 @@ The **Explore the interface** button opens public Cinemeta catalogs before conne
 ## Features
 
 - Native resizable Qt window, artwork-backed glass panels, poster rows, mouse and keyboard navigation.
+- Expanding movie/series previews on hover or keyboard focus, with backdrop artwork, title/logo and release details (current source branch).
 - Home, Movies, Series, Live catalogs, search, catalog pagination, library, details and season/episode selection.
 - Direct stream discovery, provider request headers, source selection and failover.
 - Embedded libmpv playback inside Luma, with pause, seek, audio/subtitle selection, add-on subtitle downloads, next episode and sleep timer controls in Luma.
@@ -24,6 +25,22 @@ The **Explore the interface** button opens public Cinemeta catalogs before conne
 - Encrypted account/cache file. Its encryption key is stored in Fedora's Secret Service keyring. The app never writes an unencrypted Stremio auth key to disk or passes stream URLs in mpv's command-line arguments.
 
 Playback renders directly into Luma’s video surface with glass controls. It supports direct HTTP(S) streams, not raw torrent/infoHash-only sources. DRM setup and Alder's native FFmpeg/chapter extensions are not included. Connect your account using QR pairing to import your add-ons and library.
+
+## Expanding card previews
+
+In the current source launcher, hover over a movie or series card, or focus it
+with the keyboard. After 350 ms it animates into a wide preview at the same
+artwork height. The preview uses landscape/backdrop artwork when available,
+with a logo or title and release details. Moving away restores the poster.
+Home rows move neighbouring cards aside and scroll the preview into view.
+Catalog grids keep their column positions and display the preview above nearby
+cards, contained within the grid's width. Live and other landscape cards keep
+their original proportions.
+
+Use Left/Right to move through a row, Up/Down to move between home rows or grid
+rows, and Enter or Space to open a title. Backdrop artwork loads once when a
+card first expands and remains cached with the card. Missing backdrops retain
+the complete poster rather than stretching it.
 
 ## Record a stream
 

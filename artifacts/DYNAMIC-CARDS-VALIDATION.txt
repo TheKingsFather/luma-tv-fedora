@@ -1,0 +1,25 @@
+Expanding card previews — 9 November 2026
+
+Movie and series cards expand after 350 ms of mouse hover or keyboard focus.
+The 220 ms width animation retains artwork height and uses landscape/backdrop
+art, a title/logo and release metadata. Poster artwork remains available as a
+contained fallback. Preview images and logos load on first expansion, are
+bounded to fixed decode sizes and remain attached to the cached card.
+
+Horizontal shelves move neighbouring cards and scroll the preview into view.
+Catalog grids retain their column positions and raise an opaque preview over
+neighbouring cells, clamped to the grid width. Live/landscape cards retain
+their existing dimensions and full artwork treatment. Arrow navigation works
+across horizontal shelves, between home rows, and within catalog grids.
+
+47 offscreen regression checks passed (five graphics checks skipped there).
+All five xcb/OpenGL checks passed separately. The final nine card checks also
+passed after the viewport-resize adjustment. They cover debounce/cancellation,
+constant preview height, artwork selection, original-poster preservation,
+single selection within a row, keyboard navigation, scrolling, narrow viewport
+resize, grid bounds, responsive grid columns and existing Live artwork behavior.
+
+Visual QA used generated artwork in dynamic-cards-row.png and
+dynamic-cards-grid.png. The implementation is native Qt/Python; no Nuvio source
+code or assets were copied. This change updates the source launcher and GitHub
+main branch.

@@ -16,7 +16,7 @@ from PyQt6.QtGui import QColor, QPainter, QLinearGradient, QRadialGradient, QPix
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea, QLineEdit, QDialog, QComboBox, QMessageBox, QSlider, QSizePolicy, QFileDialog)
 from backend import Client, request, browseable, extra, future_video, UA, LIVE_TYPES, catalog_choices
 from player import Player
-from cards import MediaCard, Artwork, ResponsiveGrid
+from cards import MediaCard, Artwork, ResponsiveGrid, CardRow
 from player_view import PlaybackView,MiniPlayer
 
 ROOT = Path(__file__).resolve().parent
@@ -31,6 +31,7 @@ QMainWindow, QDialog {background:#0B1423;}
 QFrame#glass {background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 rgba(99,123,151,65),stop:1 rgba(35,57,78,110)); border:1px solid rgba(224,250,255,55);border-radius:24px;}
 QFrame#mediaCard {background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 rgba(99,123,151,65),stop:1 rgba(35,57,78,110));border:1px solid rgba(224,250,255,55);border-radius:20px;}
 QFrame#mediaCard:hover,QFrame#mediaCard:focus {background:rgba(95,154,153,95);border:1px solid #C2F8E4;}
+QFrame#mediaCard[previewActive="true"] {background:#183241;border:1px solid #C2F8E4;}
 QPushButton {background:rgba(101,131,153,28);border:1px solid rgba(225,245,255,45);border-radius:22px;padding:11px 22px;font-weight:600;}
 QPushButton:hover,QPushButton:focus {background:rgba(147,209,205,65);border:1px solid #C2F8E4;}
 QPushButton:checked {background:rgba(174,225,220,45);color:#C6F9E8;border:1px solid #A6D8D4;}
@@ -205,7 +206,7 @@ class Window(QMainWindow):
         if (getattr(self,'current','')=='Playing' or self.mini_mode) and self.playback_view:
             self.playback_view.show_message(message)
 
-    def image(self, url, widget, width=250, height=360, backdrop=False):
+    def image(self, url, widget, width=250, height=360, backdrop=False, role='poster'):
         if not url:return
         token=self.generation;owner=self.root
         def apply(data):
@@ -213,7 +214,8 @@ class Window(QMainWindow):
             pix=QPixmap();pix.loadFromData(data)
             if pix.isNull():return
             if backdrop:owner.art=pix;owner.update()
-            elif isinstance(widget,Artwork):widget.setPixmap(pix)
+            elif isinstance(widget,Artwork):
+                {'poster':widget.setPixmap,'preview':widget.setPreview,'logo':widget.setLogo}[role](pix)
             else:widget.setPixmap(pix.scaled(width,height,Qt.AspectRatioMode.KeepAspectRatio,Qt.TransformationMode.SmoothTransformation))
         if url in self.image_cache:apply(self.image_cache[url]);return
         def fetch():
@@ -326,16 +328,20 @@ class Window(QMainWindow):
         if more:top.addWidget(button('View all  →',more))
         parent.addLayout(top)
         if not items:parent.addWidget(label('Nothing here yet.',14,'#AEBED1'));return
-        sc=QScrollArea();sc.setWidgetResizable(False);sc.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff);content=QWidget();cards=QHBoxLayout(content);cards.setContentsMargins(2,4,2,8);cards.setSpacing(16)
-        height=0
-        for title in items[:14]:
-            card=self.poster(title,248 if str(title.get('type','')).lower() in LIVE_TYPES else 144);cards.addWidget(card);height=max(height,card.height())
-        sc.setFixedHeight(height+30)
-        content.adjustSize();sc.setWidget(content);parent.addWidget(sc)
+        parent.addWidget(CardRow([self.poster(title,248 if str(title.get('type','')).lower() in LIVE_TYPES else 144) for title in items[:14]]))
 
     def poster(self,title,width=144):
         card=MediaCard(title,lambda:self.details(title),width)
         self.image(title.get('poster',''),card.art,width,card.art.height())
+        def artwork(meta):
+            if sip.isdeleted(card):return
+            self.image(meta.get('landscapePoster') or meta.get('background') or meta.get('backdrop'),card.art,role='preview')
+            self.image(meta.get('logo'),card.art,role='logo')
+        def preview():
+            artwork(title)
+            if not any(title.get(key) for key in ('landscapePoster','background','backdrop')):
+                self.work(lambda:self.client.meta(title),artwork,lambda _:None)
+        card.preview_requested.connect(preview)
         return card
 
     def grid(self,parent,items):
