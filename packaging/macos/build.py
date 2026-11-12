@@ -124,6 +124,10 @@ def main():
     run('hdiutil', 'create', '-volname', 'Luma TV', '-srcfolder', stage,
         '-format', 'UDZO', '-fs', 'HFS+', dmg)
     run('hdiutil', 'verify', dmg)
+    with (DIST / f'rea-summary-{arch}.json').open('w') as report:
+        run('npx', '-y', 'rea-agents@6.8.0', 'inspect-artifact', dmg,
+            '--detail', 'summary', '--evidence_output', DIST / f'rea-evidence-{arch}.json',
+            '--format', 'json', stdout=report, timeout=240)
     digest = hashlib.sha256(dmg.read_bytes()).hexdigest()
     dmg.with_suffix('.dmg.sha256').write_text(f'{digest}  {dmg.name}\n')
     metadata = {'app': 'Luma TV', 'version': version, 'architecture': arch,

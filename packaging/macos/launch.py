@@ -63,6 +63,8 @@ def self_test(render=False):
         app.setStyleSheet(luma.STYLE)
         # No account, pairing, provider or artwork requests are made by this check.
         with patch.object(luma.Window, 'work', lambda *args, **kwargs: None), \
+                patch.object(luma, 'QSettings', side_effect=lambda *args, **kwargs:
+                             QSettings(str(temporary / 'preferences.ini'), QSettings.Format.IniFormat)), \
                 patch.object(luma, 'Client', side_effect=lambda: Client(vault=Vault(temporary / 'unused.enc'))):
             window = luma.Window(preview=True)
         window.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
