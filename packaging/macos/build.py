@@ -34,7 +34,7 @@ def main():
     mpv = prefix / 'lib/libmpv.2.dylib'
     if not mpv.is_file():
         raise SystemExit('Homebrew libmpv.2.dylib is missing.')
-    run('lipo', '-verify_arch', arch, mpv)
+    run('lipo', mpv, '-verify_arch', arch)
 
     # Render the existing vector logo into Apple's native icon format.
     os.environ['QT_QPA_PLATFORM'] = 'offscreen'
@@ -90,13 +90,14 @@ def main():
     with info_path.open('rb') as source:
         info = plistlib.load(source)
     info.update(CFBundleShortVersionString=version, CFBundleVersion=version,
-                NSHighResolutionCapable=True, LSApplicationCategoryType='public.app-category.entertainment')
+                NSHighResolutionCapable=True, LSMinimumSystemVersion='15.0',
+                LSApplicationCategoryType='public.app-category.entertainment')
     with info_path.open('wb') as target:
         plistlib.dump(info, target)
     run('codesign', '--force', '--deep', '--sign', '-', bundle)
     run('codesign', '--verify', '--deep', '--strict', '--verbose=2', bundle)
     executable = bundle / 'Contents/MacOS/Luma TV'
-    run('lipo', '-verify_arch', arch, executable)
+    run('lipo', executable, '-verify_arch', arch)
     environment = dict(os.environ)
     # Catch accidental dependence on Homebrew at runtime.
     environment['PATH'] = '/usr/bin:/bin:/usr/sbin:/sbin'

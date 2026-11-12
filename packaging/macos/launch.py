@@ -66,7 +66,7 @@ def self_test(render=False):
                 patch.object(luma, 'Client', side_effect=lambda: Client(vault=Vault(temporary / 'unused.enc'))):
             window = luma.Window(preview=True)
         window.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-        if render:
+        if render and sys.platform != 'darwin':
             window.setWindowFlags(Qt.WindowType.FramelessWindowHint |
                                   Qt.WindowType.BypassWindowManagerHint |
                                   Qt.WindowType.WindowDoesNotAcceptFocus)
@@ -139,7 +139,7 @@ def self_test(render=False):
                 window.toggle_recording()
                 dialog = window._record_dialog
                 assert dialog is not None and dialog.isVisible()
-                if render:
+                if render and sys.platform != 'darwin':
                     dialog.move(-5000, -5000)
                 before = window.player.position
                 wait_for(app, lambda: window.player.position > before + .2,

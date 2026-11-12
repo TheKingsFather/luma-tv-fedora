@@ -26,7 +26,7 @@ PYTHON = APP / 'usr/lib/python3.14'
 SITE = PYTHON / 'site-packages'
 DATA = APP / 'usr/share/luma-tv'
 NATIVE_SOURCES = set()
-SOURCE_FILES = ('luma.py', 'backend.py', 'cards.py', 'player.py', 'player_view.py')
+SOURCE_FILES = ('luma.py', 'backend.py', 'desktop_storage.py', 'cards.py', 'player.py', 'player_view.py')
 VERSION = '0.4.0'
 
 
@@ -287,7 +287,7 @@ def main():
                 'build_os': Path('/etc/os-release').read_text(),
                 'python': sys.version, 'runtime': provenance, 'rpm_packages': packages,
                 'source_sha256': {name: hashlib.sha256((SOURCE / name).read_bytes()).hexdigest()
-                                  for name in ('luma.py', 'backend.py', 'cards.py', 'player.py', 'player_view.py')}}
+                                  for name in SOURCE_FILES}}
     (DATA / 'build-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     (DATA / 'THIRD_PARTY.txt').write_text(
         'This personal Linux bundle includes CPython, PyQt6/Qt, libmpv, python-mpv, '
