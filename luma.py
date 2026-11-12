@@ -626,7 +626,7 @@ class Window(QMainWindow):
         if self.client.connected:box.addWidget(button('Disconnect this desktop',self.disconnect))
         for key,name,default in [('chooseSource','Always choose a source',False),('autoplay','Play the next episode',True)]:
             enabled=self.settings.value(key,default,type=bool);b=button(name+('  ·  On' if enabled else '  ·  Off'),lambda _,k=key,e=enabled:(self.settings.setValue(k,not e),self.settings_page()));box.addWidget(b)
-        box.addWidget(label('Manage add-ons in Stremio on your phone, then refresh them here.',13,'#AEBED1'));self.layout.addWidget(panel);self.layout.addStretch();self.layout.addWidget(label(f'Luma TV for Fedora  {VERSION}    ·    F11 fullscreen    ·    Playback powered by mpv',12,'#A2B8C9'))
+        box.addWidget(label('Manage add-ons in Stremio on your phone, then refresh them here.',13,'#AEBED1'));self.layout.addWidget(panel);self.layout.addStretch();platform_name='macOS' if sys.platform=='darwin' else 'Fedora';self.layout.addWidget(label(f'Luma TV for {platform_name}  {VERSION}    ·    F11 fullscreen    ·    Playback powered by mpv',12,'#A2B8C9'))
 
     def refresh_stremio(self):
         self.clear_browse_cache()

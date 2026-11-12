@@ -1,6 +1,7 @@
 """In-process libmpv engine and Qt OpenGL rendering. No player subprocess/window."""
 import locale
 import os
+import sys
 from pathlib import Path
 import tempfile
 import time
@@ -215,7 +216,7 @@ class VideoSurface(QOpenGLWidget):
     def __init__(self,player,parent=None):
         super().__init__(parent)
         self.player=player;self.render_context=None;self.frames=0
-        fmt=QSurfaceFormat();fmt.setVersion(3,3);fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile);fmt.setSwapInterval(1);self.setFormat(fmt)
+        fmt=QSurfaceFormat();fmt.setVersion(*( (4,1) if sys.platform=='darwin' else (3,3) ));fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile);fmt.setSwapInterval(1);self.setFormat(fmt)
         self.frame_ready.connect(self._update_frame,Qt.ConnectionType.QueuedConnection)
         self.player.release_surface.connect(self.cleanup)
         self.setMinimumSize(240,135)

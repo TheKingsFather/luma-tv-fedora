@@ -1,0 +1,45 @@
+name: Build macOS DMG
+on:
+  push:
+    branches: [codex/macos-dmg]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build and playback dependencies
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+        run: |
+          brew install mpv ffmpeg
+          python -m pip install -r packaging/macos/requirements.txt
+      - name: Build and verify app and disk image
+        run: |
+          python -m unittest discover -s tests -p test_desktop_storage.py -v
+          python packaging/macos/build.py --arch '${{ matrix.arch }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Luma-TV-macOS-${{ matrix.arch }}
+          path: |
+            dist/macos/*.dmg
+            dist/macos/*.sha256
+            dist/macos/*.json
+            dist/macos/*.log
+          if-no-files-found: error
+          retention-days: 30

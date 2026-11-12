@@ -12,6 +12,7 @@ from urllib.parse import quote, urlsplit
 
 import requests
 from cryptography.fernet import Fernet
+from desktop_storage import default_vault_path, load_vault_key, store_vault_key
 
 UA = 'LumaDesktop/0.1 (Fedora Linux)'
 API = 'https://api.strem.io/api/'
@@ -97,21 +98,18 @@ def stamp():
 class Vault:
     """The Fernet key lives in the desktop keyring; the account bundle is encrypted."""
     def __init__(self, path=None):
-        self.path = Path(path or Path(os.getenv('XDG_DATA_HOME', Path.home() / '.local/share')) / 'luma-desktop/session.enc')
+        self.path = Path(path) if path is not None else default_vault_path()
         self.cipher = None
 
     def unlock(self, create=False):
         if self.cipher:
             return
-        result = subprocess.run(['secret-tool', 'lookup', 'application', 'tv.luma.fedora', 'purpose', 'vault'], capture_output=True, timeout=15)
-        key = result.stdout.strip() if result.returncode == 0 else b''
+        key = load_vault_key()
         if not key and create:
             if self.path.exists():
                 raise RuntimeError('The saved connection needs its original desktop keyring.')
             key = Fernet.generate_key()
-            saved = subprocess.run(['secret-tool', 'store', '--label=Luma TV Stremio connection', 'application', 'tv.luma.fedora', 'purpose', 'vault'], input=key, capture_output=True, timeout=30)
-            if saved.returncode:
-                raise RuntimeError('Unlock your desktop keyring and try again.')
+            store_vault_key(key)
         if key:
             self.cipher = Fernet(key)
 
