@@ -1,0 +1,81 @@
+name: Publish macOS 0.4.0 release
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-macos-release.yml
+      - artifacts/MACOS-0.4.0-RELEASE.md
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: publish-macos-0.4.0
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: v0.4.0-macos
+      BUILD_RUN_ID: '43284529939'
+      BUILD_SHA: 486c8808c0fdd0a35223cd448c06deea000ff7bb
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify successful source build
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" > build-run.json
+          python - <<'PY'
+          import json, os
+          run = json.load(open('build-run.json'))
+          assert run['conclusion'] == 'success'
+          assert run['head_sha'] == os.environ['BUILD_SHA']
+          assert run['head_repository']['full_name'] == os.environ['GITHUB_REPOSITORY']
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: '43284529939'
+          pattern: Luma-TV-macOS-*
+          merge-multiple: true
+          path: release-assets
+      - name: Verify native artifacts before publishing
+        run: |
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path('release-assets')
+          expected = {
+              'x86_64': 'f89200e1efb5beab60a0406b80bb4c5f31665fa6e577f31fe2418c5f8ae0003c',
+              'arm64': '811e55c16feb5105cbc42d055fc1e8c6b503de47ff5acde43dc291e7b5927619',
+          }
+          for arch, checksum in expected.items():
+              manifest = json.loads((root / f'build-manifest-{arch}.json').read_text())
+              assert manifest['source_revision'] == os.environ['BUILD_SHA']
+              assert manifest['architecture'] == arch
+              assert manifest['sha256'] == checksum
+              dmg = root / f'Luma-TV-0.4.0-macOS-{arch}.dmg'
+              assert hashlib.sha256(dmg.read_bytes()).hexdigest() == checksum
+              assert dmg.with_suffix('.dmg.sha256').read_text().split()[0] == checksum
+              for kind in ('self-test', 'render-test'):
+                  reports = [json.loads(line) for line in (root / f'{kind}-{arch}.log').read_text().splitlines() if line.startswith('{')]
+                  assert reports[-1]['result'] == 'passed'
+              summary = json.loads((root / f'rea-summary-{arch}.json').read_text())['summary']['normalized_result']
+              assert summary['artifact']['sha256'] == checksum
+              assert summary['summary']['available_counts']['integrity_contradictions'] == 0
+              assert (root / f'rea-evidence-{arch}.json').is_file()
+          assert len(list(root.iterdir())) == 14
+          PY
+      - name: Create draft, upload verified assets, and publish
+        run: |
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --target "$BUILD_SHA" --draft --latest=false \
+              --title 'Luma TV 0.4.0 for macOS' \
+              --notes-file artifacts/MACOS-0.4.0-RELEASE.md
+          fi
+          gh release upload "$RELEASE_TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --draft=false --latest=false --title 'Luma TV 0.4.0 for macOS' \
+            --notes-file artifacts/MACOS-0.4.0-RELEASE.md
