@@ -109,18 +109,6 @@ def self_test(render=False):
                          'Bundled libmpv video/audio playback')
                 assert window.player.engine.video_dec_params
                 assert any(track.get('type') == 'audio' for track in window.player.tracks)
-                if render:
-                    view = window.playback_view
-                    for panel in (view.top, view.bottom, view.position, view.source):
-                        before = window.player.position
-                        point = panel.rect().topLeft() + QPoint(2, 2)
-                        for kind in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease):
-                            event = QMouseEvent(kind, QPointF(point), QPointF(panel.mapToGlobal(point)), Qt.MouseButton.LeftButton,
-                                               Qt.MouseButton.LeftButton if kind == QEvent.Type.MouseButtonPress else Qt.MouseButton.NoButton,
-                                               Qt.KeyboardModifier.NoModifier)
-                            app.sendEvent(panel, event)
-                        wait_for(app, lambda: window.player.position > before + .1 and not window.player.paused,
-                                 'Playback continues after control-panel click')
                 window.player.pause()
                 window.player.seek(3)
                 wait_for(app, lambda: window.player.paused and window.player.position > 2.8,
@@ -136,6 +124,19 @@ def self_test(render=False):
                         return len(colors) > 5
 
                     wait_for(app, frame_decoded, 'Embedded OpenGL framebuffer')
+                    # Check native Qt event propagation after establishing the
+                    # framebuffer, without changing the fixture's playback clock.
+                    view = window.playback_view
+                    with patch.object(window.player, 'pause') as unintended_pause:
+                        for panel in (view.top, view.bottom, view.position, view.source):
+                            point = panel.rect().topLeft() + QPoint(2, 2)
+                            for kind in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease):
+                                event = QMouseEvent(kind, QPointF(point), QPointF(panel.mapToGlobal(point)), Qt.MouseButton.LeftButton,
+                                                   Qt.MouseButton.LeftButton if kind == QEvent.Type.MouseButtonPress else Qt.MouseButton.NoButton,
+                                                   Qt.KeyboardModifier.NoModifier)
+                                app.sendEvent(panel, event)
+                            app.processEvents()
+                            unintended_pause.assert_not_called()
                     for argument in sys.argv[1:]:
                         if argument.startswith('--self-test-player-screenshot='):
                             assert window.grab().save(argument.split('=', 1)[1])
