@@ -2,7 +2,7 @@
 
 # Luma TV for Fedora and macOS
 
-Native Qt desktop edition of Luma, with the teal/violet glass theme, Stremio QR pairing and mpv video playback. Version 0.4.0.
+Native Qt desktop edition of Luma, with the teal/violet glass theme, Stremio QR pairing and mpv video playback. Version 0.5.0.
 
 Source repository: [TheKingsFather/luma-tv-fedora](https://github.com/TheKingsFather/luma-tv-fedora) (private).
 
@@ -10,28 +10,26 @@ To install from a clone, follow the Fedora dependency instructions below, then r
 
 ## macOS download
 
-Download the [macOS 0.4.0 release](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.4.0-macos):
+Download the [0.5.0 release](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.5.0):
 
-- **Intel Mac:** `Luma-TV-0.4.0-macOS-x86_64.dmg`
-- **Apple silicon (M-series):** `Luma-TV-0.4.0-macOS-arm64.dmg`
+- **Intel Mac, macOS 13 Ventura or newer:** `Luma-TV-0.5.0-macOS-x86_64.dmg`
+- **Fedora x86_64:** `Luma-TV-0.5.0-x86_64.AppImage`, or `Luma-TV-Fedora-0.5.0.tar.gz`
 
-Requires **macOS 15 or later**. Open the matching DMG on the Mac and drag
-**Luma TV** into **Applications**. Python, Qt and libmpv are bundled; Homebrew
-is not required to run the app. macOS Keychain holds the vault key, and
-encrypted account data lives in `~/Library/Application Support/Luma TV/`.
+Open the DMG and drag **Luma TV** into **Applications**. Python, Qt, and libmpv
+are bundled; Homebrew is not required. macOS Keychain holds the vault key,
+and encrypted account data lives in `~/Library/Application Support/Luma TV/`.
 
-These personal builds are ad-hoc signed and are not Apple-notarized. If macOS
-blocks the app, review it in **System Settings → Privacy & Security**.
+The Mac build is ad-hoc signed, not Apple-notarized. If macOS blocks the app,
+review it in **System Settings → Privacy & Security**.
 
-Both architectures passed startup, generated H.264/AAC playback, pause/seek,
-recording/replay, embedded OpenGL and mini-player checks. REA inspected each
-DMG with complete container-entry coverage and no integrity contradictions.
-Checksums, build manifests, test logs and REA evidence accompany the release.
-Live account pairing and external provider streams were not tested.
+Fedora and Intel Mac packages passed startup, generated H.264/AAC playback,
+pause/seek, recording/replay, embedded OpenGL, and mini-player checks. The Mac
+build also verifies every bundled native file's minimum OS requirement against
+macOS 13. Checksums, manifests, test logs, and synthetic-media previews accompany
+the release. Real account pairing and external provider streams were not tested.
 
-The builds are controlled from Fedora using GitHub's native macOS runners.
 See [macOS build instructions](packaging/macos/README.md) and
-[release validation](artifacts/MACOS-0.4.0-RELEASE.md).
+[release notes](RELEASE-NOTES.md).
 
 ## Open
 

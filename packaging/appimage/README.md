@@ -1,4 +1,4 @@
-Luma TV 0.4.0 AppImage
+Luma TV 0.5.0 AppImage
 ====================
 
 The finished executable is `~/Applications/Luma-TV-x86_64.AppImage`.
@@ -53,7 +53,7 @@ This refreshes the application and launcher files, updates source checksums
 and version metadata, and records the previous manifest checksum and repack
 host separately. It verifies the retained AppImage runtime checksum before
 packaging. This command can run on a newer host Python; it does not rebuild
-or replace the bundled Python 3.14 or native dependencies. Version 0.4.0 uses
+or replace the bundled Python 3.14 or native dependencies. Version 0.5.0 uses
 this application-only update of the existing Fedora 44 runtime.
 
 Run the offline package check with:
