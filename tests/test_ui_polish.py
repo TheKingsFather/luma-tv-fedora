@@ -7,10 +7,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 from PyQt6.QtCore import QSettings, pyqtSignal
-from PyQt6.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication, QWidget, QComboBox, QStyle, QStyleOptionComboBox
 import luma
 from backend import Client, Vault
-from player_view import PlaybackView
+from player_view import PlaybackView, RoundedMenu
 
 APP = QApplication.instance() or QApplication([])
 APP.setStyle('Fusion')
@@ -22,6 +22,43 @@ class Surface(QWidget):
         super().__init__(parent)
 
 class PolishTests(unittest.TestCase):
+    def test_dropdown_arrow_has_space_at_right_edge(self):
+        combo = QComboBox()
+        combo.addItem('English subtitles')
+        combo.resize(260, 42)
+        combo.show()
+        try:
+            APP.processEvents()
+            option = QStyleOptionComboBox()
+            combo.initStyleOption(option)
+            arrow = combo.style().subControlRect(QStyle.ComplexControl.CC_ComboBox, option, QStyle.SubControl.SC_ComboBoxArrow, combo)
+            self.assertGreater(arrow.center().x(), combo.width() - 55)
+            self.assertLess(arrow.right(), combo.width())
+            self.assertGreaterEqual(arrow.top(), 0)
+            self.assertLess(arrow.bottom(), combo.height())
+            image = combo.grab().toImage()
+            chevron = [(x, y) for x in range(arrow.left(), arrow.right() + 1) for y in range(arrow.top(), arrow.bottom() + 1) if image.pixelColor(x, y).red() > 160 and image.pixelColor(x, y).green() > 180]
+            self.assertGreater(len(chevron), 10, 'Right arrow must actually render')
+        finally:
+            combo.close()
+
+    def test_popup_window_corners_follow_rounded_outline(self):
+        menu = RoundedMenu()
+        menu.addAction('Choose source')
+        menu.addAction('Sleep timer')
+        menu.show()
+        try:
+            APP.processEvents()
+            self.assertFalse(menu.mask().contains(menu.rect().topLeft()))
+            self.assertTrue(menu.mask().contains(menu.rect().center()))
+            self.assertEqual(menu.grab().toImage().pixelColor(0, 0).alpha(), 0)
+            menu.resize(menu.width() + 80, menu.height() + 20)
+            APP.processEvents()
+            self.assertFalse(menu.mask().contains(menu.rect().bottomRight()))
+            self.assertTrue(menu.mask().contains(menu.rect().center()))
+        finally:
+            menu.close()
+
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
         self.work = patch.object(luma.Window, 'work', lambda *a, **k: None)

@@ -20,7 +20,7 @@ from cards import MediaCard, Artwork, ResponsiveGrid, CardRow
 from player_view import PlaybackView,MiniPlayer
 
 ROOT = Path(__file__).resolve().parent
-VERSION = '0.5.0'
+VERSION = '0.5.1'
 POOL = futures.ThreadPoolExecutor(8)
 IMAGES = futures.ThreadPoolExecutor(4)
 WRITES = futures.ThreadPoolExecutor(1)
@@ -37,7 +37,11 @@ QPushButton:hover,QPushButton:focus {background:rgba(147,209,205,65);border:1px 
 QPushButton:checked {background:rgba(174,225,220,45);color:#C6F9E8;border:1px solid #A6D8D4;}
 QPushButton#primary {background:#C7F8E5;color:#10272C;border:1px solid #D8FFF0;}
 QPushButton:disabled {color:#72869c;}
-QLineEdit,QComboBox {background:rgba(62,83,108,100);border:1px solid rgba(224,250,255,65);border-radius:16px;padding:12px 18px;selection-background-color:#4A827D;}
+QLineEdit {background:rgba(62,83,108,100);border:1px solid rgba(224,250,255,65);border-radius:16px;padding:12px 18px;selection-background-color:#4A827D;}
+QComboBox {background:rgba(62,83,108,100);border:1px solid rgba(224,250,255,65);border-radius:21px;min-height:18px;padding:11px 46px 11px 18px;selection-background-color:#4A827D;}
+QComboBox::drop-down {subcontrol-origin:padding;subcontrol-position:center right;width:36px;border:0;margin-right:7px;}
+QComboBox::down-arrow {image:url("__CHEVRON__");width:12px;height:8px;}
+QPushButton::menu-indicator {image:url("__CHEVRON__");width:12px;height:8px;subcontrol-origin:padding;subcontrol-position:center right;right:14px;}
 QComboBox QAbstractItemView {background:#172A3D;color:white;selection-background-color:#3F6368;}
 QScrollArea {border:0;background:transparent;}
 QScrollArea > QWidget > QWidget {background:transparent;}
@@ -50,7 +54,7 @@ QMenu::item:selected {background:#315758;}
 QMenu::item:disabled {color:#72869c;}
 QToolTip {background:#213B4B;color:white;border:1px solid #789893;padding:8px;}
 QSlider::groove:horizontal {height:5px;background:#3D5366;border-radius:2px;} QSlider::handle:horizontal {background:#CCF9E8;width:14px;margin:-5px 0;border-radius:7px;}
-'''
+'''.replace('__CHEVRON__', (ROOT / 'chevron.svg').as_posix())
 
 class Signals(QObject):
     done = pyqtSignal(object, object, object, int)

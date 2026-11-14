@@ -33,7 +33,7 @@ def prepare_runtime():
 def self_test(render=False):
     from unittest.mock import patch
     from cryptography.fernet import Fernet
-    from PyQt6.QtCore import QSettings, Qt
+    from PyQt6.QtCore import QSettings, Qt, QPoint
     from PyQt6.QtWidgets import QApplication,QLineEdit
     import luma
     from backend import Client, Vault
@@ -81,6 +81,7 @@ def self_test(render=False):
                 window.show()
                 app.processEvents()
                 assert window.windowTitle() == 'Luma TV'
+                assert (ROOT / 'chevron.svg').is_file()
                 assert not window.windowIcon().isNull()
                 assert str(temporary) in window.settings.fileName()
                 assert not window.client.connected
@@ -127,6 +128,17 @@ def self_test(render=False):
                     for argument in sys.argv[1:]:
                         if argument.startswith('--self-test-player-screenshot='):
                             assert window.grab().save(argument.split('=', 1)[1])
+                    menu = window.playback_view.more_menu
+                    menu.popup(window.playback_view.more_button.mapToGlobal(QPoint(0, 0)))
+                    app.processEvents()
+                    assert menu.isVisible()
+                    assert not menu.mask().contains(menu.rect().topLeft())
+                    assert menu.grab().toImage().pixelColor(0, 0).alpha() == 0
+                    for argument in sys.argv[1:]:
+                        if argument.startswith('--self-test-menu-screenshot='):
+                            assert menu.grab().save(argument.split('=', 1)[1])
+                    menu.close()
+                    app.processEvents()
                     engine = window.player.engine
                     window.toggle_mini_player()
                     app.processEvents()

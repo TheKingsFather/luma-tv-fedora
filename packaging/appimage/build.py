@@ -152,6 +152,7 @@ def repack():
     copy(HERE / 'tv.luma.Fedora.desktop', APP / 'tv.luma.Fedora.desktop')
     copy(SOURCE / 'luma.svg', APP / 'luma.svg')
     copy(SOURCE / 'luma.svg', DATA / 'luma.svg')
+    copy(SOURCE / 'chevron.svg', DATA / 'chevron.svg')
     for cache in DATA.rglob('__pycache__'):
         shutil.rmtree(cache)
     manifest.update(version=VERSION,
@@ -259,6 +260,7 @@ def main():
     copy(HERE / 'tv.luma.Fedora.desktop', APP / 'tv.luma.Fedora.desktop')
     copy(SOURCE / 'luma.svg', APP / 'luma.svg')
     copy(APP / 'luma.svg', DATA / 'luma.svg')
+    copy(SOURCE / 'chevron.svg', DATA / 'chevron.svg')
     (APP / '.DirIcon').symlink_to('luma.svg')
     (APP / 'usr/bin/luma-tv').symlink_to('../../AppRun')
     (APP / 'usr/bin/qt.conf').write_text('[Paths]\nPrefix=..\nPlugins=lib/qt6/plugins\n')

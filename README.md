@@ -1,8 +1,8 @@
-> **Luma TV 0.5.0**: cleaner playback controls, clearer pairing, and source-level macOS rendering fixes. [Downloads for Fedora and macOS](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.5.0). This release targets Fedora x86_64 and Intel Macs running macOS 13+. See [release notes](RELEASE-NOTES.md).
+> **Luma TV 0.5.1**: cleaner playback controls, clearer pairing, and source-level macOS rendering fixes. [Downloads for Fedora and macOS](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.5.1). This release targets Fedora x86_64 and Intel Macs running macOS 13+. See [release notes](RELEASE-NOTES.md).
 
 # Luma TV for Fedora and macOS
 
-Native Qt desktop edition of Luma, with the teal/violet glass theme, Stremio QR pairing and mpv video playback. Version 0.5.0.
+Native Qt desktop edition of Luma, with the teal/violet glass theme, Stremio QR pairing and mpv video playback. Version 0.5.1.
 
 Source repository: [TheKingsFather/luma-tv-fedora](https://github.com/TheKingsFather/luma-tv-fedora) (private).
 
@@ -10,10 +10,10 @@ To install from a clone, follow the Fedora dependency instructions below, then r
 
 ## macOS download
 
-Download the [0.5.0 release](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.5.0):
+Download the [0.5.1 release](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.5.1):
 
-- **Intel Mac, macOS 13 Ventura or newer:** `Luma-TV-0.5.0-macOS-x86_64.dmg`
-- **Fedora x86_64:** `Luma-TV-0.5.0-x86_64.AppImage`, or `Luma-TV-Fedora-0.5.0.tar.gz`
+- **Intel Mac, macOS 13 Ventura or newer:** `Luma-TV-0.5.1-macOS-x86_64.dmg`
+- **Fedora x86_64:** `Luma-TV-0.5.1-x86_64.AppImage`, or `Luma-TV-Fedora-0.5.1.tar.gz`
 
 Open the DMG and drag **Luma TV** into **Applications**. Python, Qt, and libmpv
 are bundled; Homebrew is not required. macOS Keychain holds the vault key,

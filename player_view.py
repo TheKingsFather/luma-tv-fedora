@@ -1,7 +1,7 @@
 """One in-window video surface with glass overlays and keyboard/mouse controls."""
 from pathlib import Path
 from PyQt6.QtCore import Qt,QTimer,QEvent,pyqtSignal,QUrl
-from PyQt6.QtGui import QShortcut,QKeySequence,QDesktopServices
+from PyQt6.QtGui import QShortcut,QKeySequence,QDesktopServices,QPainterPath,QRegion
 from PyQt6.QtWidgets import QWidget,QFrame,QLabel,QPushButton,QSlider,QVBoxLayout,QHBoxLayout,QGridLayout,QApplication,QSizeGrip,QMenu
 from player import VideoSurface
 
@@ -37,6 +37,20 @@ class MiniPlayer(QWidget):
         elif key in (Qt.Key.Key_Escape,Qt.Key.Key_F,Qt.Key.Key_P):self.restore()
         else:return super().keyPressEvent(event)
         event.accept()
+
+class RoundedMenu(QMenu):
+    """Clip the popup window itself, including the native backing surface."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
+        self.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        outline = QPainterPath()
+        outline.addRoundedRect(0, 0, self.width(), self.height(), 12, 12)
+        self.setMask(QRegion(outline.toFillPolygon().toPolygon()))
 
 class PlaybackView(QWidget):
     restore_requested=pyqtSignal()
@@ -79,7 +93,7 @@ class PlaybackView(QWidget):
         controls.addSpacing(10);controls.addWidget(b('Audio && subtitles',tracks));controls.addStretch()
         self.secondary_controls=QHBoxLayout();self.secondary_controls.addStretch()
         self.more_button=b('More ···',lambda:None);self.more_button.setAccessibleName('More playback options')
-        self.more_menu=QMenu(self.more_button)
+        self.more_button.setStyleSheet('padding:0 36px 0 14px;border-radius:18px;');self.more_menu=RoundedMenu(self.more_button)
         self.more_menu.addAction('Choose source',sources)
         self.more_menu.addAction('Next episode',next_episode)
         self.more_menu.addAction('Sleep timer',sleep)
