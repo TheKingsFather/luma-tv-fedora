@@ -8,6 +8,16 @@ import time
 import mpv
 from PyQt6.QtCore import QObject,QTimer,pyqtSignal,Qt,QByteArray,QCoreApplication
 from PyQt6.QtGui import QOpenGLContext,QSurfaceFormat
+
+# The shared Qt context must match VideoSurface before QApplication starts.
+if sys.platform == 'darwin':
+    _format = QSurfaceFormat()
+    _format.setVersion(4, 1)
+    _format.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile)
+    _format.setDepthBufferSize(24)
+    _format.setStencilBufferSize(8)
+    QSurfaceFormat.setDefaultFormat(_format)
+
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 
 # Set before QApplication: Qt then preserves a QOpenGLWidget's native context

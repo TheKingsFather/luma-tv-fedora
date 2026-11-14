@@ -20,19 +20,19 @@ from cards import MediaCard, Artwork, ResponsiveGrid, CardRow
 from player_view import PlaybackView,MiniPlayer
 
 ROOT = Path(__file__).resolve().parent
-VERSION = '0.4.0'
+VERSION = '0.5.0'
 POOL = futures.ThreadPoolExecutor(8)
 IMAGES = futures.ThreadPoolExecutor(4)
 WRITES = futures.ThreadPoolExecutor(1)
 
 STYLE = '''
-QWidget {color:#F1F7FF; font-family:"Inter","Noto Sans",sans-serif; font-size:14px;}
+QWidget {color:#F1F7FF; font-size:14px;}
 QMainWindow, QDialog {background:#0B1423;}
 QFrame#glass {background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 rgba(99,123,151,65),stop:1 rgba(35,57,78,110)); border:1px solid rgba(224,250,255,55);border-radius:24px;}
 QFrame#mediaCard {background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 rgba(99,123,151,65),stop:1 rgba(35,57,78,110));border:1px solid rgba(224,250,255,55);border-radius:20px;}
 QFrame#mediaCard:hover,QFrame#mediaCard:focus {background:rgba(95,154,153,95);border:1px solid #C2F8E4;}
 QFrame#mediaCard[previewActive="true"] {background:#183241;border:1px solid #C2F8E4;}
-QPushButton {background:rgba(101,131,153,28);border:1px solid rgba(225,245,255,45);border-radius:22px;padding:11px 22px;font-weight:600;}
+QPushButton {background:rgba(101,131,153,28);border:1px solid rgba(225,245,255,45);border-radius:18px;padding:11px 22px;font-weight:600;}
 QPushButton:hover,QPushButton:focus {background:rgba(147,209,205,65);border:1px solid #C2F8E4;}
 QPushButton:checked {background:rgba(174,225,220,45);color:#C6F9E8;border:1px solid #A6D8D4;}
 QPushButton#primary {background:#C7F8E5;color:#10272C;border:1px solid #D8FFF0;}
@@ -44,6 +44,10 @@ QScrollArea > QWidget > QWidget {background:transparent;}
 QScrollBar:vertical {width:7px;background:transparent;} QScrollBar::handle:vertical {background:#425A6D;border-radius:3px;min-height:30px;}
 QScrollBar:horizontal {height:6px;background:transparent;} QScrollBar::handle:horizontal {background:#425A6D;border-radius:3px;}
 QScrollBar::add-line,QScrollBar::sub-line {width:0;height:0;}
+QMenu {background:#132838;color:#F1F7FF;border:1px solid #54717F;border-radius:12px;padding:6px;}
+QMenu::item {padding:10px 18px;border-radius:6px;}
+QMenu::item:selected {background:#315758;}
+QMenu::item:disabled {color:#72869c;}
 QToolTip {background:#213B4B;color:white;border:1px solid #789893;padding:8px;}
 QSlider::groove:horizontal {height:5px;background:#3D5366;border-radius:2px;} QSlider::handle:horizontal {background:#CCF9E8;width:14px;margin:-5px 0;border-radius:7px;}
 '''
@@ -76,6 +80,7 @@ def label(text,size=14,color='#F1F7FF',bold=False):
 
 def button(text, callback, primary=False):
     b=QPushButton(text);b.setCursor(Qt.CursorShape.PointingHandCursor)
+    if '\n' not in text:b.setFixedHeight(42);b.setStyleSheet('border-radius:21px;padding:0 22px;')
     if primary:b.setObjectName('primary')
     b.clicked.connect(callback)
     return b
@@ -194,7 +199,7 @@ class Window(QMainWindow):
         if nav:
             pane=glass();links=QHBoxLayout(pane);links.setContentsMargins(6,5,6,5);links.setSpacing(3)
             for name in ('Home','Movies','Series','Live','Library'):
-                b=button(name,lambda _,n=name:self.home(n));b.setCheckable(True);b.setChecked(name==self.tab);links.addWidget(b)
+                b=button(name,lambda _,n=name:self.home(n));b.setFixedHeight(42);b.setStyleSheet('border-radius:21px;padding:0 22px;');b.setCheckable(True);b.setChecked(name==self.tab);links.addWidget(b)
             row.addWidget(pane);row.addStretch();row.addWidget(button('⌕  Search',self.search_page));row.addWidget(button('⚙',self.settings_page))
         elif back:row.addWidget(button('←  Back',self.back))
         else:
@@ -206,11 +211,11 @@ class Window(QMainWindow):
         if (getattr(self,'current','')=='Playing' or self.mini_mode) and self.playback_view:
             self.playback_view.show_message(message)
 
-    def image(self, url, widget, width=250, height=360, backdrop=False, role='poster'):
+    def image(self, url, widget, width=250, height=360, backdrop=False, role='poster',current=None):
         if not url:return
         token=self.generation;owner=self.root
         def apply(data):
-            if sip.isdeleted(widget):return
+            if sip.isdeleted(widget) or (current and not current()):return
             pix=QPixmap();pix.loadFromData(data)
             if pix.isNull():return
             if backdrop:owner.art=pix;owner.update()
@@ -237,32 +242,35 @@ class Window(QMainWindow):
         body=QHBoxLayout();body.setSpacing(65)
         left=QVBoxLayout();left.addStretch();left.addWidget(label('A LITTLE GLASS. A LOT OF CINEMA.',12,'#C0F4E1',True));left.addSpacing(18)
         left.addWidget(label('Everything you love.\nIn a new light.',52,bold=True));left.addSpacing(18)
-        left.addWidget(label('Connect Stremio to bring your library, add-ons\nand the things you’re watching to Fedora.',18,'#AEBED1'));left.addSpacing(30)
-        left.addWidget(label('01   Open your phone’s camera       02   Scan & connect',13,'#D9E8EC'));left.addSpacing(28)
+        left.addWidget(label('Connect Stremio to bring your library, add-ons\nand continue watching on this desktop.',18,'#AEBED1'));left.addSpacing(30)
+        left.addWidget(label('1. Open your phone’s camera\n2. Scan the code and connect Stremio',16,'#D9E8EC'));left.addSpacing(28)
         left.addWidget(button('Explore the interface  →',self.explore),alignment=Qt.AlignmentFlag.AlignLeft);left.addStretch();body.addLayout(left,3)
         panel=glass();panel.setFixedWidth(350);right=QVBoxLayout(panel);right.setContentsMargins(28,26,28,28);right.setSpacing(20)
         qr_heading=label('CONNECT WITH STREMIO',12,'#C0F4E1',True);qr_heading.setWordWrap(False);qr_heading.setFixedSize(290,26);qr_heading.setAlignment(Qt.AlignmentFlag.AlignCenter);right.addWidget(qr_heading)
-        self.qr=QLabel();self.qr.setFixedSize(290,290);self.qr.setAlignment(Qt.AlignmentFlag.AlignCenter);self.qr.setStyleSheet('background:#F7FFFB;border-radius:20px;');right.addWidget(self.qr)
+        self.qr=QLabel();self.qr.setFixedSize(290,290);self.qr.setAlignment(Qt.AlignmentFlag.AlignCenter);self.qr.setStyleSheet('background:#F7FFFB;color:#183241;border-radius:20px;font-size:16px;padding:0;');self.qr.setText('Creating your QR code…');right.addWidget(self.qr)
         self.code_label=label('· · · ·',28,bold=True);self.code_label.setAlignment(Qt.AlignmentFlag.AlignCenter);right.addWidget(self.code_label)
         self.pair_status=label('Creating your connection…',13,'#C0F4E1');self.pair_status.setAlignment(Qt.AlignmentFlag.AlignCenter);right.addWidget(self.pair_status)
-        right.addWidget(button('New code',self.new_code));body.addWidget(panel,1,Qt.AlignmentFlag.AlignVCenter)
+        self.new_code_button=button('New code',self.new_code);right.addWidget(self.new_code_button);body.addWidget(panel,1,Qt.AlignmentFlag.AlignVCenter)
         self.layout.addLayout(body,1);self.layout.addWidget(label('Your phone handles sign-in. Or enter the code at link.stremio.com.',12,'#A2B8C9'))
         self.new_code()
 
     def new_code(self):
         self.pair_timer.stop();self.pair_code='';self.pair_busy=False;self.pair_serial=getattr(self,'pair_serial',0)+1;serial=self.pair_serial
-        self.qr.clear();self.code_label.setText('· · · ·');self.pair_status.setText('Creating your connection…')
+        self.qr.clear();self.qr.setText('Creating your QR code…');self.code_label.setText('· · · ·');self.pair_status.setText('Creating your connection…');self.new_code_button.setEnabled(False)
         def done(value):
             if serial!=self.pair_serial:return
-            self.pair_code=value['code'];self.pair_started=time.monotonic();self.code_label.setText(' '.join(self.pair_code.upper()));self.pair_status.setText('●  Waiting for your phone')
+            self.new_code_button.setEnabled(True);self.qr.setText('Enter the code below at\nlink.stremio.com');self.pair_code=value['code'];self.pair_started=time.monotonic();self.code_label.setText(' '.join(self.pair_code.upper()));self.pair_status.setText('●  Waiting for your phone')
             qr=value.get('qrcode','')
-            if urlsplit(qr).netloc=='link.stremio.com':self.image(qr,self.qr,290,290)
+            if urlsplit(qr).netloc=='link.stremio.com':self.image(qr,self.qr,290,290,current=lambda:serial==self.pair_serial and bool(self.pair_code))
             self.pair_timer.start()
-        self.work(self.client.create_link,done,lambda _:self.pair_status.setText('Couldn’t connect. Select New code to retry.'))
+        def failed(_):
+            if serial!=self.pair_serial:return
+            self.new_code_button.setEnabled(True);self.qr.setText('Connection unavailable');self.pair_status.setText('Couldn’t connect. Select New code to retry.')
+        self.work(self.client.create_link,done,failed)
 
     def poll_pair(self):
         if self.pair_busy or not self.pair_code:return
-        if time.monotonic()-self.pair_started>600:self.pair_timer.stop();self.pair_status.setText('Code expired. Select New code.');return
+        if time.monotonic()-self.pair_started>600:self.pair_timer.stop();self.pair_code='';self.qr.clear();self.qr.setText('Code expired');self.code_label.setText('—');self.pair_status.setText('Select New code to reconnect.');return
         self.pair_busy=True;code=self.pair_code
         def done(key):
             self.pair_busy=False

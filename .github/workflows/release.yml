@@ -1,0 +1,164 @@
+name: Build and publish Fedora and macOS
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'luma.py'
+      - 'player.py'
+      - 'player_view.py'
+      - 'packaging/**'
+      - 'tests/**'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release-0.5.0
+  cancel-in-progress: false
+jobs:
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build dependencies
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+        run: |
+          brew install ffmpeg
+          python -m pip install -r packaging/macos/requirements.txt
+      - name: Prepare Ventura-compatible Intel media libraries
+        if: matrix.arch == 'x86_64'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v1.3.5 --repo iina/iina --pattern '*.dmg' --dir build/iina
+          hdiutil attach build/iina/*.dmg -nobrowse -mountpoint /Volumes/LumaIINA
+          python packaging/macos/prepare_media.py /Volumes/LumaIINA/IINA.app/Contents/Frameworks build/ventura-media
+          echo "LUMA_MPV_LIBRARY=$GITHUB_WORKSPACE/build/ventura-media/libmpv.2.dylib" >> "$GITHUB_ENV"
+          echo 'LUMA_MACOS_MINIMUM=13.0' >> "$GITHUB_ENV"
+      - name: Prepare Apple silicon media libraries
+        if: matrix.arch == 'arm64'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+        run: brew install mpv
+      - name: Run offline UI and storage tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          if [ -n "${LUMA_MPV_LIBRARY:-}" ]; then
+            export DYLD_LIBRARY_PATH="$(dirname "$LUMA_MPV_LIBRARY")"
+          fi
+          python -m unittest discover -s tests -p test_ui_polish.py -v
+          python -m unittest discover -s tests -p test_desktop_storage.py -v
+          python -m unittest discover -s tests -p test_navigation.py -v
+          python -m unittest discover -s tests -p test_cards.py -v
+      - name: Build and validate native app and DMG
+        run: python packaging/macos/build.py --arch '${{ matrix.arch }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-macos-${{ matrix.arch }}
+          path: |
+            dist/macos/*.dmg
+            dist/macos/*.sha256
+            dist/macos/*.json
+            dist/macos/*.log
+            dist/macos/*.png
+          if-no-files-found: error
+
+  fedora:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install packaging and rendering tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y squashfs-tools desktop-file-utils xvfb libgl1-mesa-dri libegl1 libxcb-cursor0 libxkbcommon-x11-0
+      - name: Download and verify released Fedora runtime
+        run: |
+          gh release download v0.4.0 --pattern '*.AppImage' --pattern SHA256SUMS --dir build/base
+          cd build/base
+          sha256sum --check --ignore-missing SHA256SUMS
+          chmod +x ./*.AppImage
+      - name: Repack current source and create Fedora source archive
+        run: |
+          python3 packaging/appimage/release_repack.py build/base/Luma-TV-0.4.0-x86_64.AppImage
+          mv dist/Luma-TV-x86_64.AppImage dist/Luma-TV-0.5.0-x86_64.AppImage
+          rm dist/Luma-TV-x86_64.AppImage.sha256
+          git archive --format=tar.gz --prefix=Luma-TV-Fedora-0.5.0/ HEAD > dist/Luma-TV-Fedora-0.5.0.tar.gz
+      - name: Validate packaged playback and actual OpenGL frames
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -o pipefail
+          QT_QPA_PLATFORM=offscreen dist/Luma-TV-0.5.0-x86_64.AppImage --appimage-extract-and-run --self-test 2>&1 | tee dist/self-test-fedora.log
+          xvfb-run -a -s '-screen 0 1280x800x24' env QT_QPA_PLATFORM=xcb dist/Luma-TV-0.5.0-x86_64.AppImage --appimage-extract-and-run --self-test-render --self-test-screenshot="$PWD/dist/pairing-fedora.png" --self-test-player-screenshot="$PWD/dist/player-fedora.png" 2>&1 | tee dist/render-test-fedora.log
+      - name: Compute checksums
+        run: |
+          cd dist
+          sha256sum *.AppImage *.tar.gz > SHA256SUMS-fedora
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-fedora
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: [macos, fedora]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: release-assets
+      - name: Verify all platform artifacts and test reports
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path('release-assets')
+          for arch in ('arm64', 'x86_64'):
+              manifest = json.loads((root / f'build-manifest-{arch}.json').read_text())
+              assert manifest['version'] == '0.5.0'
+              assert manifest['source_revision'] == os.environ['GITHUB_SHA']
+              dmg = root / manifest['dmg']
+              assert hashlib.sha256(dmg.read_bytes()).hexdigest() == manifest['sha256']
+          for platform in ('arm64', 'x86_64', 'fedora'):
+              for kind in ('self-test', 'render-test'):
+                  reports = [json.loads(line) for line in (root / f'{kind}-{platform}.log').read_text().splitlines() if line.startswith('{')]
+                  assert reports[-1]['result'] == 'passed'
+                  assert reports[-1]['version'] == '0.5.0'
+          for line in (root / 'SHA256SUMS-fedora').read_text().splitlines():
+              digest, name = line.split()
+              assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest
+          PY
+      - name: Publish verified Fedora and macOS release
+        run: |
+          if gh release view v0.5.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to replace published binaries.'
+            exit 1
+          fi
+          gh release create v0.5.0 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title 'Luma TV 0.5.0 — Fedora and macOS' --notes-file RELEASE-NOTES.md
+          gh release upload v0.5.0 release-assets/* --repo "$GITHUB_REPOSITORY"
+          gh release edit v0.5.0 --repo "$GITHUB_REPOSITORY" --draft=false --latest

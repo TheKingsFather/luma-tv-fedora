@@ -2,7 +2,7 @@
 from pathlib import Path
 from PyQt6.QtCore import Qt,QTimer,QEvent,pyqtSignal,QUrl
 from PyQt6.QtGui import QShortcut,QKeySequence,QDesktopServices
-from PyQt6.QtWidgets import QWidget,QFrame,QLabel,QPushButton,QSlider,QVBoxLayout,QHBoxLayout,QGridLayout,QApplication,QSizeGrip
+from PyQt6.QtWidgets import QWidget,QFrame,QLabel,QPushButton,QSlider,QVBoxLayout,QHBoxLayout,QGridLayout,QApplication,QSizeGrip,QMenu
 from player import VideoSurface
 
 def clock(seconds):
@@ -45,7 +45,7 @@ class PlaybackView(QWidget):
         super().__init__(parent)
         self.player=player;self.visible_controls=True;self.mini_mode=False;self.ignore_release=False
         self.record_callback=record or (lambda:None);self.last_recording=None;self._recording_active=None
-        self.setStyleSheet('PlaybackView {background:black;}')
+        self.setStyleSheet('PlaybackView {background:black;} QFrame#glass {background:rgba(8,20,32,242);border:1px solid rgba(200,230,240,65);border-radius:20px;}')
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         grid=QGridLayout(self);grid.setContentsMargins(0,0,0,0)
         self.video=VideoSurface(player,self);grid.addWidget(self.video,0,0)
@@ -53,12 +53,12 @@ class PlaybackView(QWidget):
         layout=QVBoxLayout(self.overlay);layout.setContentsMargins(30,25,30,25)
         self.top=QFrame();self.top.setObjectName('glass');top=QHBoxLayout(self.top);top.setContentsMargins(18,14,18,14)
         def b(text,callback,primary=False):
-            button=QPushButton(text);button.setCursor(Qt.CursorShape.PointingHandCursor);button.clicked.connect(callback)
+            button=QPushButton(text);button.setFixedHeight(36);button.setStyleSheet('padding:0 14px;border-radius:18px;');button.setAccessibleName(text);button.setCursor(Qt.CursorShape.PointingHandCursor);button.clicked.connect(callback)
             if primary:button.setObjectName('primary')
             return button
         top.addWidget(b('←  Back',back));self.title=QLabel(title);self.title.setMinimumWidth(0);self.title.setStyleSheet('font-size:20px;font-weight:600;');top.addWidget(self.title,1)
         if mini:
-            self.mini_button=b('▣  Mini player',mini);top.addWidget(self.mini_button)
+            self.mini_button=b('▣',mini);self.mini_button.setToolTip('Mini player (Ctrl+Shift+P)');self.mini_button.setAccessibleName('Open mini player');top.addWidget(self.mini_button)
         self.record_button=b('●  Record',self.record_callback);self.record_button.setMinimumWidth(150);self.record_button.setAccessibleName('Record current source');top.addWidget(self.record_button)
         brand=QLabel('LUMA');brand.setStyleSheet('font-size:11px;letter-spacing:3px;color:#ACBED0;');top.addWidget(brand)
         layout.addWidget(self.top)
@@ -72,14 +72,22 @@ class PlaybackView(QWidget):
         layout.addStretch()
         self.bottom=QFrame();self.bottom.setObjectName('glass');box=QVBoxLayout(self.bottom);box.setContentsMargins(22,17,22,18);box.setSpacing(14)
         time_row=QHBoxLayout();self.position=QLabel('0:00');self.source=QLabel('Finding the perfect frame…');self.source.setStyleSheet('color:#ACBED0;');self.total=QLabel('LIVE');time_row.addWidget(self.position);time_row.addWidget(self.source,1);time_row.addWidget(self.total);box.addLayout(time_row)
-        self.seek=QSlider(Qt.Orientation.Horizontal);self.seek.setRange(0,1000);self.seek.setEnabled(False);self.seek.sliderReleased.connect(lambda:player.seek(player.duration*self.seek.value()/1000));box.addWidget(self.seek)
+        self.seek=QSlider(Qt.Orientation.Horizontal);self.seek.setAccessibleName('Playback position');self.seek.setRange(0,1000);self.seek.setEnabled(False);self.seek.sliderReleased.connect(lambda:player.seek(player.duration*self.seek.value()/1000));box.addWidget(self.seek)
         self.seek.actionTriggered.connect(lambda _:player.seek(player.duration*self.seek.sliderPosition()/1000) if player.duration>0 else None)
         self.controls_grid=QGridLayout();self.controls_grid.setContentsMargins(0,0,0,0);self.compact_controls=False
         controls=QHBoxLayout();self.play_button=b('Ⅱ  Pause',player.pause,True);controls.addWidget(b('−10s',lambda:player.seek(player.position-10)));controls.addWidget(self.play_button);controls.addWidget(b('+10s',lambda:player.seek(player.position+10)))
-        controls.addSpacing(10);controls.addWidget(b('Audio & subtitles',tracks));controls.addWidget(b('Sources',sources));controls.addStretch()
-        self.secondary_controls=QHBoxLayout();self.secondary_controls.addWidget(b('Next  →',next_episode));self.secondary_controls.addWidget(b('Sleep',sleep));self.secondary_controls.addStretch()
-        self.secondary_controls.addWidget(QLabel('Volume'));self.volume=QSlider(Qt.Orientation.Horizontal);self.volume.setRange(0,100);self.volume.setValue(100);self.volume.setFixedWidth(100);self.volume.valueChanged.connect(lambda value:player.send('set_property','volume',value));self.secondary_controls.addWidget(self.volume)
-        self.secondary_controls.addWidget(b('⛶',fullscreen))
+        controls.addSpacing(10);controls.addWidget(b('Audio && subtitles',tracks));controls.addStretch()
+        self.secondary_controls=QHBoxLayout();self.secondary_controls.addStretch()
+        self.more_button=b('More ···',lambda:None);self.more_button.setAccessibleName('More playback options')
+        self.more_menu=QMenu(self.more_button)
+        self.more_menu.addAction('Choose source',sources)
+        self.more_menu.addAction('Next episode',next_episode)
+        self.more_menu.addAction('Sleep timer',sleep)
+        self.more_button.setMenu(self.more_menu);self.secondary_controls.addWidget(self.more_button)
+        self.more_menu.aboutToShow.connect(self.hide_timer_stop)
+        self.more_menu.aboutToHide.connect(self.show_controls)
+        self.secondary_controls.addWidget(QLabel('Volume'));self.volume=QSlider(Qt.Orientation.Horizontal);self.volume.setAccessibleName('Volume');self.volume.setRange(0,100);self.volume.setValue(100);self.volume.setFixedWidth(100);self.volume.valueChanged.connect(lambda value:player.send('set_property','volume',value));self.secondary_controls.addWidget(self.volume)
+        self.fullscreen_button=b('⛶',fullscreen);self.fullscreen_button.setToolTip('Toggle fullscreen (F11)');self.fullscreen_button.setAccessibleName('Toggle fullscreen');self.secondary_controls.addWidget(self.fullscreen_button)
         self.controls_grid.addLayout(controls,0,0);self.controls_grid.addLayout(self.secondary_controls,0,1);box.addLayout(self.controls_grid)
         layout.addWidget(self.bottom)
         self.mini_overlay=QWidget(self);self.mini_overlay.setStyleSheet('QPushButton {padding:5px 10px;border-radius:13px;font-size:12px;} QLabel {font-size:12px;}')
@@ -193,8 +201,11 @@ class PlaybackView(QWidget):
         self.hide_timer.start()
         self.update_recording()
 
+    def hide_timer_stop(self):
+        self.hide_timer.stop()
+
     def hide_controls(self):
-        if self.player.paused or self.player.loading or QApplication.activeModalWidget():self.hide_timer.start();return
+        if self.player.paused or self.player.loading or QApplication.activeModalWidget() or QApplication.activePopupWidget():self.hide_timer.start();return
         self.visible_controls=False;self.top.hide();self.bottom.hide();self.mini_top.hide();self.mini_bottom.hide();self.setCursor(Qt.CursorShape.BlankCursor)
         self.update_recording()
 

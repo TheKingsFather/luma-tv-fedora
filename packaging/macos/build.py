@@ -30,8 +30,11 @@ def main():
     BUILD.mkdir(parents=True, exist_ok=True)
     DIST.mkdir(parents=True, exist_ok=True)
     version = re.search(r"VERSION = '([^']+)'", (ROOT / 'luma.py').read_text()).group(1)
-    prefix = Path(subprocess.check_output(['brew', '--prefix', 'mpv'], text=True).strip())
-    mpv = prefix / 'lib/libmpv.2.dylib'
+    if os.environ.get('LUMA_MPV_LIBRARY'):
+        mpv = Path(os.environ['LUMA_MPV_LIBRARY']).resolve()
+    else:
+        prefix = Path(subprocess.check_output(['brew', '--prefix', 'mpv'], text=True).strip())
+        mpv = prefix / 'lib/libmpv.2.dylib'
     if not mpv.is_file():
         raise SystemExit('Homebrew libmpv.2.dylib is missing.')
     run('lipo', mpv, '-verify_arch', arch)
@@ -90,7 +93,7 @@ def main():
     with info_path.open('rb') as source:
         info = plistlib.load(source)
     info.update(CFBundleShortVersionString=version, CFBundleVersion=version,
-                NSHighResolutionCapable=True, LSMinimumSystemVersion='15.0',
+                NSHighResolutionCapable=True, LSMinimumSystemVersion=os.environ.get('LUMA_MACOS_MINIMUM', '15.0'),
                 LSApplicationCategoryType='public.app-category.entertainment')
     with info_path.open('wb') as target:
         plistlib.dump(info, target)
@@ -104,7 +107,7 @@ def main():
     for key in ('DYLD_LIBRARY_PATH', 'DYLD_FALLBACK_LIBRARY_PATH', 'PYTHONPATH', 'PYTHONHOME'):
         environment.pop(key, None)
     for name, args in (('self-test', ['--self-test']),
-                       ('render-test', ['--self-test-render'])):
+                       ('render-test', ['--self-test-render', f'--self-test-screenshot={DIST / ("pairing-" + arch + ".png")}', f'--self-test-player-screenshot={DIST / ("player-" + arch + ".png")}'])):
         with (DIST / f'{name}-{arch}.log').open('w') as log:
             run(executable, *args, env=environment, stdout=log, stderr=subprocess.STDOUT, timeout=120)
 

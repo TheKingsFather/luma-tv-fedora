@@ -124,6 +124,9 @@ def self_test(render=False):
                         return len(colors) > 5
 
                     wait_for(app, frame_decoded, 'Embedded OpenGL framebuffer')
+                    for argument in sys.argv[1:]:
+                        if argument.startswith('--self-test-player-screenshot='):
+                            assert window.grab().save(argument.split('=', 1)[1])
                     engine = window.player.engine
                     window.toggle_mini_player()
                     app.processEvents()

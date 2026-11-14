@@ -27,7 +27,7 @@ SITE = PYTHON / 'site-packages'
 DATA = APP / 'usr/share/luma-tv'
 NATIVE_SOURCES = set()
 SOURCE_FILES = ('luma.py', 'backend.py', 'desktop_storage.py', 'cards.py', 'player.py', 'player_view.py')
-VERSION = '0.4.0'
+VERSION = re.search(r"VERSION = '([^']+)'", (SOURCE / 'luma.py').read_text()).group(1)
 
 
 def copy(source, destination):
