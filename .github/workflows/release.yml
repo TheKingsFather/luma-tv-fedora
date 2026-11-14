@@ -21,8 +21,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15
-            arch: arm64
           - runner: macos-15-intel
             arch: x86_64
     runs-on: ${{ matrix.runner }}
@@ -48,11 +46,6 @@ jobs:
           python packaging/macos/prepare_media.py /Volumes/LumaIINA/IINA.app/Contents/Frameworks build/ventura-media
           echo "LUMA_MPV_LIBRARY=$GITHUB_WORKSPACE/build/ventura-media/libmpv.2.dylib" >> "$GITHUB_ENV"
           echo 'LUMA_MACOS_MINIMUM=13.0' >> "$GITHUB_ENV"
-      - name: Prepare Apple silicon media libraries
-        if: matrix.arch == 'arm64'
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: '1'
-        run: brew install mpv
       - name: Run offline UI and storage tests
         env:
           QT_QPA_PLATFORM: offscreen
@@ -138,13 +131,13 @@ jobs:
           import hashlib, json, os
           from pathlib import Path
           root = Path('release-assets')
-          for arch in ('arm64', 'x86_64'):
+          for arch in ('x86_64',):
               manifest = json.loads((root / f'build-manifest-{arch}.json').read_text())
               assert manifest['version'] == '0.5.0'
               assert manifest['source_revision'] == os.environ['GITHUB_SHA']
               dmg = root / manifest['dmg']
               assert hashlib.sha256(dmg.read_bytes()).hexdigest() == manifest['sha256']
-          for platform in ('arm64', 'x86_64', 'fedora'):
+          for platform in ('x86_64', 'fedora'):
               for kind in ('self-test', 'render-test'):
                   reports = [json.loads(line) for line in (root / f'{kind}-{platform}.log').read_text().splitlines() if line.startswith('{')]
                   assert reports[-1]['result'] == 'passed'

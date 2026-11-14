@@ -21,6 +21,29 @@ def run(*args, **kwargs):
     return subprocess.run(list(map(str, args)), check=True, **kwargs)
 
 
+def verify_minimum_system(bundle, minimum):
+    """Check native deployment targets, rather than only lowering the plist."""
+    limit = tuple(map(int, minimum.split('.')[:2]))
+    checked = 0
+    for path in bundle.rglob('*'):
+        if not path.is_file() or path.is_symlink():
+            continue
+        with path.open('rb') as source:
+            magic = source.read(4)
+        if magic not in (b'\xcf\xfa\xed\xfe', b'\xfe\xed\xfa\xcf', b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca'):
+            continue
+        commands = subprocess.check_output(['otool', '-l', str(path)], text=True)
+        for match in re.finditer(r'cmd LC_(BUILD_VERSION|VERSION_MIN_MACOSX)(.*?)(?=\nLoad command|\Z)', commands, re.S):
+            version = re.search(r'\b(?:minos|version) (\d+)\.(\d+)', match.group(2))
+            if not version:
+                raise RuntimeError(f'No deployment target in {path}')
+            if tuple(map(int, version.groups())) > limit:
+                raise RuntimeError(f'{path} requires macOS {version.group(0)}, above {minimum}')
+        checked += 1
+    assert checked > 0
+    return checked
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--arch', required=True, choices=['arm64', 'x86_64'])
@@ -99,6 +122,7 @@ def main():
         plistlib.dump(info, target)
     run('codesign', '--force', '--deep', '--sign', '-', bundle)
     run('codesign', '--verify', '--deep', '--strict', '--verbose=2', bundle)
+    native_count = verify_minimum_system(bundle, info['LSMinimumSystemVersion'])
     executable = bundle / 'Contents/MacOS/Luma TV'
     run('lipo', executable, '-verify_arch', arch)
     environment = dict(os.environ)
@@ -134,6 +158,7 @@ def main():
     digest = hashlib.sha256(dmg.read_bytes()).hexdigest()
     dmg.with_suffix('.dmg.sha256').write_text(f'{digest}  {dmg.name}\n')
     metadata = {'app': 'Luma TV', 'version': version, 'architecture': arch,
+                'minimum_macos': info['LSMinimumSystemVersion'], 'native_files_checked': native_count,
                 'source_revision': os.getenv('GITHUB_SHA'), 'host': platform.platform(),
                 'dmg': dmg.name, 'sha256': digest, 'bytes': dmg.stat().st_size,
                 'signing': 'ad-hoc, not notarized',

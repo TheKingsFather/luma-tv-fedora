@@ -11,7 +11,6 @@ Downloads:
 
 - Fedora x86_64: AppImage, or the source archive with `install.py` and `launch.sh`. The AppImage retains the verified 0.4.0 Fedora 44 Python/native runtime and updates the application source; host graphics/audio and a desktop keyring are required.
 - Intel Mac: DMG for macOS 13 Ventura or newer. Media libraries come from the official IINA 1.3.5 release, matching the previous Ventura compatibility build.
-- Apple silicon: DMG for macOS 15 or newer, with native Homebrew media libraries.
 
 macOS builds are ad-hoc signed, not Apple-notarized. Drag Luma TV into Applications. If macOS blocks launch, review it in System Settings > Privacy & Security.
 

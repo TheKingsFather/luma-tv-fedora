@@ -1,4 +1,4 @@
-> **Luma TV 0.5.0**: cleaner playback controls, clearer pairing, and source-level macOS rendering fixes. [Downloads for Fedora and macOS](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.5.0). Intel Macs require macOS 13+; Apple silicon builds require macOS 15+. See [release notes](RELEASE-NOTES.md).
+> **Luma TV 0.5.0**: cleaner playback controls, clearer pairing, and source-level macOS rendering fixes. [Downloads for Fedora and macOS](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.5.0). This release targets Fedora x86_64 and Intel Macs running macOS 13+. See [release notes](RELEASE-NOTES.md).
 
 # Luma TV for Fedora and macOS
 
