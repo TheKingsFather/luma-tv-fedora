@@ -135,6 +135,10 @@ class PlaybackView(QWidget):
         self.record_shortcut=QShortcut(QKeySequence('Ctrl+R'),self);self.record_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut);self.record_shortcut.activated.connect(self.record_callback)
         self.click_timer=QTimer(self);self.click_timer.setSingleShot(True);self.click_timer.setInterval(QApplication.doubleClickInterval());self.click_timer.timeout.connect(player.pause)
         self.hide_timer=QTimer(self);self.hide_timer.setSingleShot(True);self.hide_timer.setInterval(4000);self.hide_timer.timeout.connect(self.hide_controls)
+        # Ignored clicks on panel padding/labels must not bubble to the video
+        # overlay, whose background deliberately supports click-to-pause.
+        for panel in (self.top,self.bottom,self.record_notice,self.mini_top,self.mini_bottom,self.mini_record_notice):
+            panel.setAttribute(Qt.WidgetAttribute.WA_NoMousePropagation)
         for widget in [self,self.video,self.overlay]+self.overlay.findChildren(QWidget)+[self.mini_overlay]+self.mini_overlay.findChildren(QWidget):
             widget.setMouseTracking(True);widget.installEventFilter(self)
         player.changed.connect(self.update_state);player.message.connect(self.show_message);player.buffering.connect(self.set_buffering)

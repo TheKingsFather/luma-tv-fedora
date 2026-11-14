@@ -6,7 +6,8 @@ import time
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
-from PyQt6.QtCore import QSettings, pyqtSignal
+from PyQt6.QtCore import QSettings, pyqtSignal, Qt, QEvent, QPointF
+from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import QApplication, QWidget, QComboBox, QStyle, QStyleOptionComboBox
 import luma
 from backend import Client, Vault
@@ -22,6 +23,48 @@ class Surface(QWidget):
         super().__init__(parent)
 
 class PolishTests(unittest.TestCase):
+    def test_control_panel_clicks_do_not_toggle_playback(self):
+        player = self.window.player
+        with patch.object(player, 'pause') as pause, patch('player_view.VideoSurface', Surface):
+            view = PlaybackView(player, 'Click routing fixture', *[Mock() for _ in range(6)])
+            view.resize(1280, 800)
+            view.show()
+            APP.processEvents()
+
+            def click(widget, point=None):
+                point = point or widget.rect().center()
+                for kind in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease):
+                    event = QMouseEvent(kind, QPointF(point), QPointF(widget.mapToGlobal(point)), Qt.MouseButton.LeftButton,
+                                       Qt.MouseButton.LeftButton if kind == QEvent.Type.MouseButtonPress else Qt.MouseButton.NoButton,
+                                       Qt.KeyboardModifier.NoModifier)
+                    APP.sendEvent(widget, event)
+                APP.processEvents()
+
+            try:
+                for widget in (view.top, view.bottom, view.title, view.position, view.source, view.total, view.seek):
+                    click(widget)
+                    pause.assert_not_called()
+                click(view.play_button)
+                pause.assert_called_once()
+                pause.reset_mock()
+                click(view.overlay)
+                pause.assert_called_once()
+                pause.reset_mock()
+                view.set_mini(True)
+                view.click_timer.setInterval(1)
+                for widget in (view.mini_top, view.mini_bottom, view.mini_title):
+                    click(widget)
+                    self.assertFalse(view.click_timer.isActive(), 'Panel clicks must not schedule a delayed pause')
+                click(view.mini_pause)
+                pause.assert_called_once()
+                pause.reset_mock()
+                click(view.mini_overlay)
+                time.sleep(.01)
+                APP.processEvents()
+                pause.assert_called_once()
+            finally:
+                view.close()
+
     def test_dropdown_arrow_has_space_at_right_edge(self):
         combo = QComboBox()
         combo.addItem('English subtitles')

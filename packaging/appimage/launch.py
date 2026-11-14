@@ -33,7 +33,8 @@ def prepare_runtime():
 def self_test(render=False):
     from unittest.mock import patch
     from cryptography.fernet import Fernet
-    from PyQt6.QtCore import QSettings, Qt, QPoint
+    from PyQt6.QtCore import QSettings, Qt, QPoint, QPointF, QEvent
+    from PyQt6.QtGui import QMouseEvent
     from PyQt6.QtWidgets import QApplication,QLineEdit
     import luma
     from backend import Client, Vault
@@ -108,6 +109,18 @@ def self_test(render=False):
                          'Bundled libmpv video/audio playback')
                 assert window.player.engine.video_dec_params
                 assert any(track.get('type') == 'audio' for track in window.player.tracks)
+                if render:
+                    view = window.playback_view
+                    for panel in (view.top, view.bottom, view.position, view.source):
+                        before = window.player.position
+                        point = panel.rect().topLeft() + QPoint(2, 2)
+                        for kind in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease):
+                            event = QMouseEvent(kind, QPointF(point), QPointF(panel.mapToGlobal(point)), Qt.MouseButton.LeftButton,
+                                               Qt.MouseButton.LeftButton if kind == QEvent.Type.MouseButtonPress else Qt.MouseButton.NoButton,
+                                               Qt.KeyboardModifier.NoModifier)
+                            app.sendEvent(panel, event)
+                        wait_for(app, lambda: window.player.position > before + .1 and not window.player.paused,
+                                 'Playback continues after control-panel click')
                 window.player.pause()
                 window.player.seek(3)
                 wait_for(app, lambda: window.player.paused and window.player.position > 2.8,
@@ -195,7 +208,7 @@ def self_test(render=False):
                                      'pause and seek', 'encrypted temporary vault',
                                      'CA certificates', 'isolated preferences', 'nonblocking recording dialog',
                                      'recording start/stop and recorded video/audio playback'] +
-                                    (['embedded OpenGL frames', 'mini player'] if render else [])}),
+                                    (['embedded OpenGL frames', 'mini player', 'control panel click routing'] if render else [])}),
               flush=True)
     return 0
 
