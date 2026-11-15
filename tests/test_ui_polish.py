@@ -151,6 +151,29 @@ class PolishTests(unittest.TestCase):
             selected.assert_called_once_with(0)
         finally:dialog.close()
 
+    def test_back_control_is_titlebar_only_on_macos(self):
+        from PyQt6.QtWidgets import QPushButton
+        control=Mock();self.window._native_back=control
+        for platform in ('darwin','linux'):
+            with patch('luma.sys.platform',platform):
+                self.window.page(remember=False);self.window.header(back=True)
+                buttons=[b.text() for b in self.window.root.findChildren(QPushButton)]
+                self.assertEqual('←  Back' in buttons,platform=='linux')
+                control.set_enabled.assert_called_with(True)
+                self.window.page(remember=False);self.window.header(nav=True)
+                control.set_enabled.assert_called_with(False)
+        self.window._native_back=None
+
+    def test_player_back_pill_remains_on_fedora_only(self):
+        from PyQt6.QtWidgets import QPushButton
+        for platform in ('darwin','linux'):
+            with patch('player_view.sys.platform',platform),patch('player_view.VideoSurface',Surface):
+                view=PlaybackView(self.window.player,'Platform fixture',*[Mock() for _ in range(6)])
+            try:
+                texts=[b.text() for b in view.top.findChildren(QPushButton)]
+                self.assertEqual('←  Back' in texts,platform=='linux')
+            finally:view.close()
+
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
         self.work = patch.object(luma.Window, 'work', lambda *a, **k: None)

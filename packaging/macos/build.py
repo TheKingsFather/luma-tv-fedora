@@ -132,7 +132,7 @@ def main():
     for key in ('DYLD_LIBRARY_PATH', 'DYLD_FALLBACK_LIBRARY_PATH', 'PYTHONPATH', 'PYTHONHOME'):
         environment.pop(key, None)
     for name, args in (('self-test', ['--self-test']),
-                       ('render-test', ['--self-test-render', f'--self-test-screenshot={DIST / ("pairing-" + arch + ".png")}', f'--self-test-player-screenshot={DIST / ("player-" + arch + ".png")}', f'--self-test-menu-screenshot={DIST / ("menu-" + arch + ".png")}'])):
+                       ('render-test', ['--self-test-render', f'--self-test-screenshot={DIST / ("pairing-" + arch + ".png")}', f'--self-test-player-screenshot={DIST / ("player-" + arch + ".png")}', f'--self-test-menu-screenshot={DIST / ("menu-" + arch + ".png")}', f'--self-test-titlebar-screenshot={DIST / ("titlebar-" + arch + ".png")}'])):
         with (DIST / f'{name}-{arch}.log').open('w') as log:
             run(executable, *args, env=environment, stdout=log, stderr=subprocess.STDOUT, timeout=120)
 

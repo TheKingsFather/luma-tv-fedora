@@ -1,4 +1,5 @@
 """One in-window video surface with glass overlays and keyboard/mouse controls."""
+import sys
 from pathlib import Path
 from PyQt6.QtCore import Qt,QTimer,QEvent,pyqtSignal,QUrl
 from PyQt6.QtGui import QShortcut,QKeySequence,QDesktopServices,QPainterPath,QRegion
@@ -70,7 +71,8 @@ class PlaybackView(QWidget):
             button=QPushButton(text);button.setFixedHeight(36);button.setStyleSheet('padding:0 14px;border-radius:18px;');button.setAccessibleName(text);button.setCursor(Qt.CursorShape.PointingHandCursor);button.clicked.connect(callback)
             if primary:button.setObjectName('primary')
             return button
-        top.addWidget(b('←  Back',back));self.title=QLabel(title);self.title.setMinimumWidth(0);self.title.setStyleSheet('font-size:20px;font-weight:600;');top.addWidget(self.title,1)
+        if sys.platform!='darwin':top.addWidget(b('←  Back',back))
+        self.title=QLabel(title);self.title.setMinimumWidth(0);self.title.setStyleSheet('font-size:20px;font-weight:600;');top.addWidget(self.title,1)
         if mini:
             self.mini_button=b('▣',mini);self.mini_button.setToolTip('Mini player (Ctrl+Shift+P)');self.mini_button.setAccessibleName('Open mini player');top.addWidget(self.mini_button)
         self.record_button=b('●  Record',self.record_callback);self.record_button.setMinimumWidth(150);self.record_button.setAccessibleName('Record current source');top.addWidget(self.record_button)

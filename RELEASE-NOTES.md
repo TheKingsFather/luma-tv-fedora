@@ -1,6 +1,6 @@
-# Luma TV 0.6.1
+# Luma TV 0.6.2 for macOS
 
-- Source options now wrap their complete provider name, filename and details to the dialog width, including long filenames without spaces.
-- Removed horizontal scrolling from the source picker. Vertical scrolling remains for long lists, and option heights adapt when resizing the window.
-- The same source picker is used before playback and when changing a source during playback. Mouse and keyboard selection remain supported.
-- Includes the stream resolution display and verified in-app updater introduced in 0.6.0.
+- Use a native, icon-only Back chevron in the window titlebar, directly after the macOS traffic-light controls. It replaces the top-right content pill and the duplicate player Back pill on macOS.
+- The titlebar control follows navigation history, works during playback and supports the standard macOS Back keyboard shortcut. Root screens display a disabled chevron.
+- Fedora retains its existing Back labels, positions and player controls. AppKit and PyObjC are loaded only on macOS.
+- Retains source-picker text wrapping, current stream resolution and verified in-app updates.

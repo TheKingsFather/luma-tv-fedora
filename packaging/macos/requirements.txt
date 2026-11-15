@@ -4,3 +4,6 @@ requests==2.32.5
 cryptography==46.0.3
 python-mpv==1.0.8
 keyring==25.7.0
+pyobjc-framework-Cocoa==11.1
+
+pyobjc-core==11.1

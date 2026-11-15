@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 
 import requests
 from PyQt6 import sip
-from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, QSettings, QSize, QStandardPaths
+from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, QSettings, QSize, QStandardPaths, QEvent
 from PyQt6.QtGui import QColor, QPainter, QLinearGradient, QRadialGradient, QPixmap, QIcon, QShortcut, QKeySequence, QTextDocument, QTextOption
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea, QLineEdit, QDialog, QComboBox, QMessageBox, QSlider, QSizePolicy, QFileDialog, QStyleOptionButton, QStyle)
 from backend import Client, request, browseable, extra, future_video, UA, LIVE_TYPES, catalog_choices
@@ -22,7 +22,7 @@ from cards import MediaCard, Artwork, ResponsiveGrid, CardRow
 from player_view import PlaybackView,MiniPlayer
 
 ROOT = Path(__file__).resolve().parent
-VERSION = '0.6.1'
+VERSION = '0.6.2'
 POOL = futures.ThreadPoolExecutor(8)
 IMAGES = futures.ThreadPoolExecutor(4)
 WRITES = futures.ThreadPoolExecutor(1)
@@ -152,6 +152,7 @@ class SourceDialog(QDialog):
 class Window(QMainWindow):
     def __init__(self, preview=False, start_live=False):
         super().__init__()
+        self._native_back=None;self._has_back=False
         self.setWindowTitle('Luma TV');self.setWindowIcon(QIcon(str(ROOT/'luma.svg')))
         self.resize(1360,860);self.setMinimumSize(980,700)
         self._update_busy=False;self._update_token='';self._update_dialog=None
@@ -172,12 +173,33 @@ class Window(QMainWindow):
         QShortcut(QKeySequence('Ctrl+Shift+P'),self,activated=self.toggle_mini_player)
         QShortcut(QKeySequence('F11'),self,activated=lambda:self.showNormal() if self.isFullScreen() else self.showFullScreen())
         QShortcut(QKeySequence('Escape'),self,activated=self.back)
+        if sys.platform=='darwin':QShortcut(QKeySequence(QKeySequence.StandardKey.Back),self,activated=self.back)
         QShortcut(QKeySequence('Ctrl+F'),self,activated=self.search_page)
         self.page();self.layout.addWidget(label('Opening your cinema…',30),alignment=Qt.AlignmentFlag.AlignCenter)
         if preview:
             self.work(self.client.refresh,lambda _:self.home())
         else:
             self.work(self.client.restore,lambda _:self.home('Live' if start_live else 'Home') if self.client.connected else self.pair(),lambda e:(self.notice('Unlock your desktop keyring to restore your connection, or connect again.'),self.pair()))
+
+    def showEvent(self,event):
+        super().showEvent(event)
+        if sys.platform=='darwin':QTimer.singleShot(0,self.ensure_native_back)
+
+    def event(self,event):
+        result=super().event(event)
+        if event.type()==QEvent.Type.WinIdChange and sys.platform=='darwin':
+            QTimer.singleShot(0,self.ensure_native_back)
+        return result
+
+    def ensure_native_back(self):
+        if sys.platform!='darwin' or QApplication.platformName()!='cocoa':return
+        if self._native_back is None:
+            from macos_navigation import MacBackControl
+            self._native_back=MacBackControl(self.back)
+        self._native_back.attach(self);self.sync_native_back()
+
+    def sync_native_back(self):
+        if self._native_back is not None:self._native_back.set_enabled(self._has_back)
 
     def work(self, func, success=lambda _:None, failure=None, token=None, pool=None):
         token=self.generation if token is None else token
@@ -189,13 +211,14 @@ class Window(QMainWindow):
 
     # Keep the actual browse widgets: decoded artwork, pagination, focus and both
     # scroll axes survive a trip through details/playback without another request.
-    _page_fields=('generation','root','layout','current','hero','hero_title','hero_meta','hero_desc')
+    _page_fields=('generation','root','layout','current','hero','hero_title','hero_meta','hero_desc','_has_back')
 
     def page_state(self):
         return {name:getattr(self,name,None) for name in self._page_fields}
 
     def apply_page_state(self,state):
         for name in self._page_fields:setattr(self,name,state.get(name))
+        self.sync_native_back()
 
     def clear_browse_cache(self):
         for state in self._history:
@@ -249,6 +272,7 @@ class Window(QMainWindow):
 
     def page(self,remember=True):
         self.leave_page(remember)
+        self._has_back=False;self.sync_native_back()
         self.statusBar().show()
         self._page_serial+=1;self.generation=self._page_serial
         self.pair_timer.stop();self.pair_code='';self.hero=None
@@ -257,13 +281,15 @@ class Window(QMainWindow):
         return self.layout
 
     def header(self, nav=False, back=False):
+        self._has_back=back;self.sync_native_back()
         row=QHBoxLayout();brand=QHBoxLayout();mark=QLabel();mark.setPixmap(QIcon(str(ROOT/'luma.svg')).pixmap(42,42));mark.setFixedSize(42,42);brand.addWidget(mark);brand.addSpacing(5);brand.addWidget(label('luma',30,bold=True));row.addLayout(brand);row.addStretch()
         if nav:
             pane=glass();links=QHBoxLayout(pane);links.setContentsMargins(6,5,6,5);links.setSpacing(3)
             for name in ('Home','Movies','Series','Live','Library'):
                 b=button(name,lambda _,n=name:self.home(n));b.setFixedHeight(42);b.setStyleSheet('border-radius:21px;padding:0 22px;');b.setCheckable(True);b.setChecked(name==self.tab);links.addWidget(b)
             row.addWidget(pane);row.addStretch();row.addWidget(button('⌕  Search',self.search_page));row.addWidget(button('⚙',self.settings_page))
-        elif back:row.addWidget(button('←  Back',self.back))
+        elif back:
+            if sys.platform!='darwin':row.addWidget(button('←  Back',self.back))
         else:
             tagline=label('YOUR STREMIO, REIMAGINED',11,'#ACBED0',True);tagline.setWordWrap(False);tagline.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignVCenter);row.addWidget(tagline)
         self.layout.addLayout(row)
@@ -500,7 +526,7 @@ class Window(QMainWindow):
             self.player.stop();self.play_title=None;self.notice('The embedded player could not start. Check the libmpv installation.')
 
     def now_playing(self,restoring=False):
-        self.current='Playing';self.statusBar().hide()
+        self.current='Playing';self._has_back=True;self.sync_native_back();self.statusBar().hide()
         if self.playback_view is None:
             self.playback_view=PlaybackView(self.player,self.play_title.get('name',''),self.stop_playback,self.tracks,self.player_sources,self.next_episode,self.sleep_menu,self.toggle_fullscreen,mini=self.enter_mini_player,record=self.toggle_recording)
             self.stack.addWidget(self.playback_view)

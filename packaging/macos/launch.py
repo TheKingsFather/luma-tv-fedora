@@ -84,6 +84,27 @@ def self_test(render=False):
                 window.show()
                 app.processEvents()
                 assert window.windowTitle() == 'Luma TV'
+                if sys.platform=='darwin' and QApplication.platformName()=='cocoa':
+                    window.ensure_native_back();native=window._native_back
+                    assert native is not None and native.button is not None
+                    assert not native.button.isEnabled()
+                    green=native.window.standardWindowButton_(2)
+                    traffic=green.convertRect_toView_(green.bounds(),None)
+                    chevron=native.button.convertRect_toView_(native.button.bounds(),None)
+                    assert traffic.origin.x+traffic.size.width <= chevron.origin.x
+                    assert chevron.origin.x-(traffic.origin.x+traffic.size.width) < 80
+                    assert abs((traffic.origin.y+traffic.size.height/2)-(chevron.origin.y+chevron.size.height/2)) < 4
+                    window.settings_page();app.processEvents()
+                    assert native.button.isEnabled()
+                    for argument in sys.argv[1:]:
+                        if argument.startswith('--self-test-titlebar-screenshot='):
+                            frame=native.window.contentView().superview()
+                            bitmap=frame.bitmapImageRepForCachingDisplayInRect_(frame.bounds())
+                            frame.cacheDisplayInRect_toBitmapImageRep_(frame.bounds(),bitmap)
+                            assert bitmap.representationUsingType_properties_(4,{}).writeToFile_atomically_(argument.split('=',1)[1],True)
+                    native.button.performClick_(None);app.processEvents()
+                    assert window.current=='Connect' and not native.button.isEnabled()
+                    window.pair_status.setText('Offline package verification')
                 assert (ROOT / 'chevron.svg').is_file()
                 assert not window.windowIcon().isNull()
                 assert str(temporary) in window.settings.fileName()
@@ -118,6 +139,8 @@ def self_test(render=False):
                     assert window.playback_view.quality.text() == window.player.quality
                     assert window.playback_view.mini_quality.text() == window.player.quality
                 assert window.player.engine.video_dec_params
+                if window._native_back is not None:
+                    window.ensure_native_back();assert window._native_back.button.isEnabled()
                 assert any(track.get('type') == 'audio' for track in window.player.tracks)
                 if render:
                     def frame_decoded():
@@ -213,6 +236,8 @@ def self_test(render=False):
                     assert window.playback_view.quality.text() == window.player.quality
                     assert window.playback_view.mini_quality.text() == window.player.quality
                 assert window.player.engine.video_dec_params
+                if window._native_back is not None:
+                    window.ensure_native_back();assert window._native_back.button.isEnabled()
                 assert any(track.get('type') == 'audio' for track in window.player.tracks)
         finally:
             window.close()
