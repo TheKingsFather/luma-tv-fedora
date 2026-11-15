@@ -41,14 +41,14 @@ jobs:
       - name: Publish macOS update
         run: |
           if gh release view v0.6.2 >/dev/null 2>&1; then
-            echo 'Release already exists; refusing to replace assets.'
-            exit 1
+            test "$(gh release view v0.6.2 --json isDraft --jq .isDraft)" = true
+          else
+            gh release create v0.6.2 --target main --draft --title 'Luma TV 0.6.2 — Native titlebar Back for macOS' --notes-file RELEASE-NOTES.md
           fi
           cp RELEASE-NOTES.md /tmp/release-notes.md
           cat >> /tmp/release-notes.md <<'NOTES'
 
           This is a macOS-only interface update for Intel Macs running macOS 13+. Fedora retains its existing Back controls; its 0.6.0 AppImage remains available in the preceding release.
           NOTES
-          gh release create v0.6.2 --target 6915b816fb0d40966e7cdb26bdf558cd86efceb3 --draft --title 'Luma TV 0.6.2 — Native titlebar Back for macOS' --notes-file /tmp/release-notes.md
-          gh release upload v0.6.2 release-assets/*
-          gh release edit v0.6.2 --draft=false --latest
+          gh release upload v0.6.2 release-assets/* --clobber
+          gh release edit v0.6.2 --draft=false --latest --notes-file /tmp/release-notes.md
