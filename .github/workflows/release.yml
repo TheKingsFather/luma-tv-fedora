@@ -7,6 +7,7 @@ on:
       - 'player.py'
       - 'player_view.py'
       - 'updater.py'
+      - 'macos_navigation.py'
       - 'packaging/**'
       - 'tests/**'
       - '.github/workflows/release.yml'
@@ -14,7 +15,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: release-0.6.1
+  group: release-0.6.2
   cancel-in-progress: false
 jobs:
   macos:
@@ -94,16 +95,16 @@ jobs:
       - name: Repack current source and create Fedora source archive
         run: |
           python3 packaging/appimage/release_repack.py build/base/Luma-TV-0.4.0-x86_64.AppImage
-          mv dist/Luma-TV-x86_64.AppImage dist/Luma-TV-0.6.1-x86_64.AppImage
+          mv dist/Luma-TV-x86_64.AppImage dist/Luma-TV-0.6.2-x86_64.AppImage
           rm dist/Luma-TV-x86_64.AppImage.sha256
-          git archive --format=tar.gz --prefix=Luma-TV-Fedora-0.6.1/ HEAD > dist/Luma-TV-Fedora-0.6.1.tar.gz
+          git archive --format=tar.gz --prefix=Luma-TV-Fedora-0.6.2/ HEAD > dist/Luma-TV-Fedora-0.6.2.tar.gz
       - name: Validate packaged playback and actual OpenGL frames
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
           set -o pipefail
-          QT_QPA_PLATFORM=offscreen dist/Luma-TV-0.6.1-x86_64.AppImage --appimage-extract-and-run --self-test 2>&1 | tee dist/self-test-fedora.log
-          xvfb-run -a -s '-screen 0 1280x800x24' env QT_QPA_PLATFORM=xcb dist/Luma-TV-0.6.1-x86_64.AppImage --appimage-extract-and-run --self-test-render --self-test-screenshot="$PWD/dist/pairing-fedora.png" --self-test-player-screenshot="$PWD/dist/player-fedora.png" --self-test-menu-screenshot="$PWD/dist/menu-fedora.png" 2>&1 | tee dist/render-test-fedora.log
+          QT_QPA_PLATFORM=offscreen dist/Luma-TV-0.6.2-x86_64.AppImage --appimage-extract-and-run --self-test 2>&1 | tee dist/self-test-fedora.log
+          xvfb-run -a -s '-screen 0 1280x800x24' env QT_QPA_PLATFORM=xcb dist/Luma-TV-0.6.2-x86_64.AppImage --appimage-extract-and-run --self-test-render --self-test-screenshot="$PWD/dist/pairing-fedora.png" --self-test-player-screenshot="$PWD/dist/player-fedora.png" --self-test-menu-screenshot="$PWD/dist/menu-fedora.png" 2>&1 | tee dist/render-test-fedora.log
       - name: Compute checksums
         run: |
           cd dist
@@ -136,7 +137,7 @@ jobs:
           root = Path('release-assets')
           for arch in ('x86_64',):
               manifest = json.loads((root / f'build-manifest-{arch}.json').read_text())
-              assert manifest['version'] == '0.6.1'
+              assert manifest['version'] == '0.6.2'
               assert manifest['source_revision'] == os.environ['GITHUB_SHA']
               dmg = root / manifest['dmg']
               assert hashlib.sha256(dmg.read_bytes()).hexdigest() == manifest['sha256']
@@ -144,17 +145,17 @@ jobs:
               for kind in ('self-test', 'render-test'):
                   reports = [json.loads(line) for line in (root / f'{kind}-{platform}.log').read_text().splitlines() if line.startswith('{')]
                   assert reports[-1]['result'] == 'passed'
-                  assert reports[-1]['version'] == '0.6.1'
+                  assert reports[-1]['version'] == '0.6.2'
           for line in (root / 'SHA256SUMS-fedora').read_text().splitlines():
               digest, name = line.split()
               assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest
           PY
       - name: Publish verified Fedora and macOS release
         run: |
-          if gh release view v0.6.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if gh release view v0.6.2 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo 'Release already exists; refusing to replace published binaries.'
             exit 1
           fi
-          gh release create v0.6.1 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title 'Luma TV 0.6.1 — Fedora and macOS' --notes-file RELEASE-NOTES.md
-          gh release upload v0.6.1 release-assets/* --repo "$GITHUB_REPOSITORY"
-          gh release edit v0.6.1 --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          gh release create v0.6.2 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title 'Luma TV 0.6.2 — Fedora and macOS' --notes-file RELEASE-NOTES.md
+          gh release upload v0.6.2 release-assets/* --repo "$GITHUB_REPOSITORY"
+          gh release edit v0.6.2 --repo "$GITHUB_REPOSITORY" --draft=false --latest
