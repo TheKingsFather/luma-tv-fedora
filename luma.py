@@ -2,6 +2,7 @@
 """Luma for Fedora: native Qt glass UI, Stremio linking and mpv playback."""
 import concurrent.futures as futures
 import json
+import math
 import os
 import re
 import sys
@@ -12,8 +13,8 @@ from urllib.parse import urlsplit
 import requests
 from PyQt6 import sip
 from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, QSettings, QSize, QStandardPaths
-from PyQt6.QtGui import QColor, QPainter, QLinearGradient, QRadialGradient, QPixmap, QIcon, QShortcut, QKeySequence
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea, QLineEdit, QDialog, QComboBox, QMessageBox, QSlider, QSizePolicy, QFileDialog)
+from PyQt6.QtGui import QColor, QPainter, QLinearGradient, QRadialGradient, QPixmap, QIcon, QShortcut, QKeySequence, QTextDocument, QTextOption
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea, QLineEdit, QDialog, QComboBox, QMessageBox, QSlider, QSizePolicy, QFileDialog, QStyleOptionButton, QStyle)
 from backend import Client, request, browseable, extra, future_video, UA, LIVE_TYPES, catalog_choices
 import updater
 from player import Player
@@ -21,7 +22,7 @@ from cards import MediaCard, Artwork, ResponsiveGrid, CardRow
 from player_view import PlaybackView,MiniPlayer
 
 ROOT = Path(__file__).resolve().parent
-VERSION = '0.6.0'
+VERSION = '0.6.1'
 POOL = futures.ThreadPoolExecutor(8)
 IMAGES = futures.ThreadPoolExecutor(4)
 WRITES = futures.ThreadPoolExecutor(1)
@@ -92,6 +93,61 @@ def button(text, callback, primary=False):
 
 def glass():
     f=QFrame();f.setObjectName('glass');return f
+
+class SourceButton(QPushButton):
+    """Native keyboard/click handling with width-aware, plain-text source details."""
+    padding_x=22
+    padding_y=14
+    def __init__(self,text,parent=None):
+        super().__init__(parent)
+        self.source_text=text
+        self.setAccessibleName(text)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        policy=QSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Preferred)
+        policy.setHeightForWidth(True);self.setSizePolicy(policy)
+        self.setMinimumWidth(0)
+        self.setStyleSheet('border-radius:18px;padding:0;')
+
+    def document(self,width):
+        document=QTextDocument();document.setDocumentMargin(0)
+        document.setDefaultFont(self.font())
+        option=QTextOption();option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        option.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        document.setDefaultTextOption(option);document.setPlainText(self.source_text)
+        document.setTextWidth(max(1,width-2*self.padding_x))
+        return document
+
+    def hasHeightForWidth(self):return True
+    def heightForWidth(self,width):return math.ceil(self.document(width).size().height())+2*self.padding_y
+    def sizeHint(self):return QSize(400,self.heightForWidth(400))
+    def minimumSizeHint(self):return QSize(0,self.heightForWidth(400))
+    def paintEvent(self,event):
+        painter=QPainter(self);option=QStyleOptionButton();self.initStyleOption(option)
+        self.style().drawControl(QStyle.ControlElement.CE_PushButton,option,painter,self)
+        painter.translate(self.padding_x,self.padding_y)
+        document=self.document(self.width())
+        # Plain text prevents provider filenames from becoming markup or links.
+        painter.setPen(self.palette().buttonText().color())
+        context=document.documentLayout().PaintContext()
+        context.palette=self.palette()
+        document.documentLayout().draw(painter,context)
+
+class SourceDialog(QDialog):
+    def __init__(self,streams,select,parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('Choose your source');self.resize(760,500);self.setMinimumSize(320,260)
+        box=QVBoxLayout(self);box.addWidget(label('Choose your source',28,bold=True))
+        self.scroll=QScrollArea();self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        content=QWidget();items=QVBoxLayout(content);items.setContentsMargins(8,8,8,8);items.setSpacing(8)
+        self.options=[]
+        for i,stream in enumerate(streams):
+            name=str(stream.get('name') or stream.get('provider') or 'Source')
+            details=str(stream.get('description') or stream.get('title') or '')
+            option=SourceButton(name+('\n'+details if details else ''))
+            def chosen(_,index=i):self.accept();select(index)
+            option.clicked.connect(chosen);items.addWidget(option);self.options.append(option)
+        items.addStretch();self.scroll.setWidget(content);box.addWidget(self.scroll)
 
 class Window(QMainWindow):
     def __init__(self, preview=False, start_live=False):
@@ -430,10 +486,7 @@ class Window(QMainWindow):
         def ready(streams):
             if not streams:self.notice('No playable direct streams. Check your streaming add-ons in Stremio.');return
             if choose or self.settings.value('chooseSource',False,type=bool):
-                dialog=QDialog(self);dialog.setWindowTitle('Choose your source');dialog.resize(760,500);box=QVBoxLayout(dialog);box.addWidget(label('Choose your source',28,bold=True));sc=QScrollArea();sc.setWidgetResizable(True);content=QWidget();items=QVBoxLayout(content)
-                for i,s in enumerate(streams):
-                    b=button(s.get('name',s.get('provider','Source'))+'\n'+s.get('description',s.get('title','')),lambda _,i=i:(dialog.accept(),self.play(title,video,streams,i)));items.addWidget(b)
-                sc.setWidget(content);box.addWidget(sc);dialog.exec()
+                SourceDialog(streams,lambda index:self.play(title,video,streams,index),self).exec()
             else:self.play(title,video,streams,0)
         self.work(lambda:self.client.streams(title,video,included if included is not None else title.get('streams') if video==title.get('id') else None),ready)
 
@@ -608,13 +661,10 @@ class Window(QMainWindow):
         else:self.home(self.tab)
 
     def player_sources(self):
-        streams=list(self.player.streams);dialog=QDialog(self);dialog.setWindowTitle('Choose source');box=QVBoxLayout(dialog)
-        for i,stream in enumerate(streams):
-            def select(_,index=i):
-                title,video,position=self.play_title,self.play_video,self.player.position
-                dialog.accept();self.play(title,video,streams,index,position)
-            box.addWidget(button(stream.get('name',stream.get('provider','Source')),select))
-        dialog.exec()
+        streams=list(self.player.streams)
+        def select(index):
+            self.play(self.play_title,self.play_video,streams,index,self.player.position)
+        SourceDialog(streams,select,self).exec()
 
     def toggle_fullscreen(self):
         if self.isFullScreen():self.showNormal()

@@ -122,6 +122,35 @@ class PolishTests(unittest.TestCase):
         dialog.close()
         self.assertIsNone(self.window._update_dialog)
 
+    def test_source_options_wrap_without_horizontal_scroll_and_select(self):
+        from PyQt6.QtCore import Qt
+        from PyQt6.QtGui import QKeyEvent
+        stream={'name':'[RD+] Provider · 4K','description':'Heart.of.the.Beast.'+'VeryLongFilenameWithoutSpaces.'*22+'\nMulti Audio / English / Spanish · 11.93 GB'}
+        selected=Mock()
+        dialog=luma.SourceDialog([stream]*12,selected)
+        dialog.show()
+        try:
+            for width in (760,400,1000):
+                dialog.resize(width,500)
+                for _ in range(3):APP.processEvents()
+                self.assertEqual(dialog.scroll.horizontalScrollBar().maximum(),0)
+                self.assertGreater(dialog.scroll.verticalScrollBar().maximum(),0)
+                for option in dialog.options:
+                    self.assertLessEqual(option.width(),dialog.scroll.viewport().width())
+                    self.assertGreaterEqual(option.height(),option.heightForWidth(option.width()))
+                    document=option.document(option.width())
+                    block=document.begin()
+                    while block.isValid():
+                        layout=block.layout()
+                        for i in range(layout.lineCount()):
+                            self.assertLessEqual(layout.lineAt(i).naturalTextWidth(),document.textWidth()+1)
+                        block=block.next()
+            dialog.options[0].setFocus()
+            APP.sendEvent(dialog.options[0],QKeyEvent(QEvent.Type.KeyPress,Qt.Key.Key_Space,Qt.KeyboardModifier.NoModifier))
+            APP.sendEvent(dialog.options[0],QKeyEvent(QEvent.Type.KeyRelease,Qt.Key.Key_Space,Qt.KeyboardModifier.NoModifier))
+            selected.assert_called_once_with(0)
+        finally:dialog.close()
+
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
         self.work = patch.object(luma.Window, 'work', lambda *a, **k: None)

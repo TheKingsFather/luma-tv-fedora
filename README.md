@@ -1,10 +1,10 @@
-> **Luma TV 0.6.0** adds current stream resolution in the player and Settings → Check for app updates. [Download](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.6.0).
+> **Luma TV 0.6.1** adds current stream resolution in the player and Settings → Check for app updates. [Download](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.6.1).
 >
 > In-app installation supports the macOS app and Fedora AppImage in a writable folder. Updates verify the GitHub asset SHA-256 digest and keep the previous package as `Luma TV.app.previous` or `*.AppImage.previous`. Private repository downloads use an existing GitHub CLI login, `GH_TOKEN`/`GITHUB_TOKEN`, or a token entered for the app session (Contents: Read permission). Source installations should download the packaged edition. Account data and preferences remain in their existing locations.
 
 # Luma TV for Fedora and macOS
 
-Native Qt desktop edition of Luma, with the teal/violet glass theme, Stremio QR pairing and mpv video playback. Version 0.6.0.
+Native Qt desktop edition of Luma, with the teal/violet glass theme, Stremio QR pairing and mpv video playback. Version 0.6.1.
 
 Source repository: [TheKingsFather/luma-tv-fedora](https://github.com/TheKingsFather/luma-tv-fedora) (private).
 
@@ -12,10 +12,10 @@ To install from a clone, follow the Fedora dependency instructions below, then r
 
 ## macOS download
 
-Download the [0.6.0 release](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.6.0):
+Download the [0.6.1 release](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.6.1):
 
-- **Intel Mac, macOS 13 Ventura or newer:** `Luma-TV-0.6.0-macOS-x86_64.dmg`
-- **Fedora x86_64:** `Luma-TV-0.6.0-x86_64.AppImage`, or `Luma-TV-Fedora-0.6.0.tar.gz`
+- **Intel Mac, macOS 13 Ventura or newer:** `Luma-TV-0.6.1-macOS-x86_64.dmg`
+- **Fedora x86_64:** `Luma-TV-0.6.1-x86_64.AppImage`, or `Luma-TV-Fedora-0.6.1.tar.gz`
 
 Open the DMG and drag **Luma TV** into **Applications**. Python, Qt, and libmpv
 are bundled; Homebrew is not required. macOS Keychain holds the vault key,

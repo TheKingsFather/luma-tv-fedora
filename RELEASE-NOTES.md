@@ -1,6 +1,6 @@
-# Luma TV 0.6.0
+# Luma TV 0.6.1
 
-- Display the current decoded stream resolution (1080p, 1440p, 2160p, etc.) in full and mini player controls. Updates when an adaptive stream changes resolution; clears when changing or stopping a source.
-- Settings → Check for app updates checks stable GitHub Releases, downloads the matching platform package, verifies its SHA-256 digest and installs with a rollback copy before restarting. Supports macOS app bundles and Fedora AppImages in writable locations.
-- Private repository access uses GH_TOKEN/GITHUB_TOKEN, an existing GitHub CLI login, or a token entered for this app session. Tokens are never saved to preferences or included in release artifacts. Fine-grained tokens need Contents: Read on this repository.
-- Installation preserves Stremio account data and preferences. Stop a recording before updating. Source checkouts show guidance to use a packaged edition.
+- Source options now wrap their complete provider name, filename and details to the dialog width, including long filenames without spaces.
+- Removed horizontal scrolling from the source picker. Vertical scrolling remains for long lists, and option heights adapt when resizing the window.
+- The same source picker is used before playback and when changing a source during playback. Mouse and keyboard selection remain supported.
+- Includes the stream resolution display and verified in-app updater introduced in 0.6.0.
