@@ -117,10 +117,6 @@ def self_test(render=False):
                     assert window.playback_view.mini_quality.text() == window.player.quality
                 assert window.player.engine.video_dec_params
                 assert any(track.get('type') == 'audio' for track in window.player.tracks)
-                window.player.pause()
-                window.player.seek(3)
-                wait_for(app, lambda: window.player.paused and window.player.position > 2.8,
-                         'Pause and seek')
                 if render:
                     def frame_decoded():
                         surface = window.playback_view.video
@@ -132,6 +128,13 @@ def self_test(render=False):
                         return len(colors) > 5
 
                     wait_for(app, frame_decoded, 'Embedded OpenGL framebuffer')
+                # Establish rendered frames while playback is advancing; pausing
+                # immediately after an asynchronous seek can freeze a blank FBO.
+                window.player.pause()
+                window.player.seek(3)
+                wait_for(app, lambda: window.player.paused and window.player.position > 2.8,
+                         'Pause and seek')
+                if render:
                     # Check native Qt event propagation after establishing the
                     # framebuffer, without changing the fixture's playback clock.
                     view = window.playback_view
