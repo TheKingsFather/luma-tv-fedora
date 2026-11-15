@@ -1,14 +1,15 @@
-name: Publish verified macOS source-picker fix
+name: Publish verified macOS titlebar navigation
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/publish-macos-fix.yml']
+  workflow_run:
+    workflows: ['Build and publish Fedora and macOS']
+    types: [completed]
   workflow_dispatch:
 permissions:
   contents: write
   actions: read
 jobs:
   publish:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.id == 43723690630
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -17,12 +18,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: '43720676114'
+          run-id: '43723690630'
           name: release-macos-x86_64
           path: release-assets
       - name: Verify successful macOS build, hashes and playback reports
         run: |
-          gh api repos/$GITHUB_REPOSITORY/actions/runs/43720676114/jobs > jobs.json
+          gh api repos/$GITHUB_REPOSITORY/actions/runs/43723690630/jobs > jobs.json
           python3 - <<'PY'
           import hashlib, json
           from pathlib import Path
@@ -30,24 +31,24 @@ jobs:
           assert any(j['name']=='macos (macos-15-intel, x86_64)' and j['conclusion']=='success' for j in jobs)
           root=Path('release-assets')
           manifest=json.loads((root/'build-manifest-x86_64.json').read_text())
-          assert manifest['version']=='0.6.1'
-          assert manifest['source_revision']=='c763fc2423c3b8d859fe9cf913a1e67ffc9dc7d5'
+          assert manifest['version']=='0.6.2'
+          assert manifest['source_revision']=='99fe276afd61fd5512d3dd3544131627d7e30cde'
           assert hashlib.sha256((root/manifest['dmg']).read_bytes()).hexdigest()==manifest['sha256']
           for kind in ('self-test','render-test'):
               reports=[json.loads(line) for line in (root/f'{kind}-x86_64.log').read_text().splitlines() if line.startswith('{')]
-              assert reports[-1]['result']=='passed' and reports[-1]['version']=='0.6.1'
+              assert reports[-1]['result']=='passed' and reports[-1]['version']=='0.6.2'
           PY
       - name: Publish macOS update
         run: |
-          if gh release view v0.6.1 >/dev/null 2>&1; then
+          if gh release view v0.6.2 >/dev/null 2>&1; then
             echo 'Release already exists; refusing to replace assets.'
             exit 1
           fi
           cp RELEASE-NOTES.md /tmp/release-notes.md
           cat >> /tmp/release-notes.md <<'NOTES'
 
-          This release provides the verified Intel macOS 13+ update. Fedora source changes are on main; the 0.6.1 AppImage is withheld while its virtual-display rendering check is investigated. Fedora 0.6.0 remains available in the preceding release.
+          This is a macOS-only interface update for Intel Macs running macOS 13+. Fedora retains its existing Back controls; its 0.6.0 AppImage remains available in the preceding release.
           NOTES
-          gh release create v0.6.1 --target c763fc2423c3b8d859fe9cf913a1e67ffc9dc7d5 --draft --title 'Luma TV 0.6.1 — Wrapped source picker for macOS' --notes-file /tmp/release-notes.md
-          gh release upload v0.6.1 release-assets/*
-          gh release edit v0.6.1 --draft=false --latest
+          gh release create v0.6.2 --target 99fe276afd61fd5512d3dd3544131627d7e30cde --draft --title 'Luma TV 0.6.2 — Native titlebar Back for macOS' --notes-file /tmp/release-notes.md
+          gh release upload v0.6.2 release-assets/*
+          gh release edit v0.6.2 --draft=false --latest
