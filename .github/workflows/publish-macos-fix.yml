@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.id == 43723690630
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.id == 43724167735
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -18,12 +18,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: '43723690630'
+          run-id: '43724167735'
           name: release-macos-x86_64
           path: release-assets
       - name: Verify successful macOS build, hashes and playback reports
         run: |
-          gh api repos/$GITHUB_REPOSITORY/actions/runs/43723690630/jobs > jobs.json
+          gh api repos/$GITHUB_REPOSITORY/actions/runs/43724167735/jobs > jobs.json
           python3 - <<'PY'
           import hashlib, json
           from pathlib import Path
@@ -32,7 +32,7 @@ jobs:
           root=Path('release-assets')
           manifest=json.loads((root/'build-manifest-x86_64.json').read_text())
           assert manifest['version']=='0.6.2'
-          assert manifest['source_revision']=='99fe276afd61fd5512d3dd3544131627d7e30cde'
+          assert manifest['source_revision']=='6915b816fb0d40966e7cdb26bdf558cd86efceb3'
           assert hashlib.sha256((root/manifest['dmg']).read_bytes()).hexdigest()==manifest['sha256']
           for kind in ('self-test','render-test'):
               reports=[json.loads(line) for line in (root/f'{kind}-x86_64.log').read_text().splitlines() if line.startswith('{')]
@@ -49,6 +49,6 @@ jobs:
 
           This is a macOS-only interface update for Intel Macs running macOS 13+. Fedora retains its existing Back controls; its 0.6.0 AppImage remains available in the preceding release.
           NOTES
-          gh release create v0.6.2 --target 99fe276afd61fd5512d3dd3544131627d7e30cde --draft --title 'Luma TV 0.6.2 — Native titlebar Back for macOS' --notes-file /tmp/release-notes.md
+          gh release create v0.6.2 --target 6915b816fb0d40966e7cdb26bdf558cd86efceb3 --draft --title 'Luma TV 0.6.2 — Native titlebar Back for macOS' --notes-file /tmp/release-notes.md
           gh release upload v0.6.2 release-assets/*
           gh release edit v0.6.2 --draft=false --latest
