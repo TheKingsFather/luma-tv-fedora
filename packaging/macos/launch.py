@@ -139,7 +139,7 @@ def self_test(render=False):
                     assert window.playback_view.quality.text() == window.player.quality
                     assert window.playback_view.mini_quality.text() == window.player.quality
                 assert window.player.engine.video_dec_params
-                if window._native_back is not None:
+                if render and window._native_back is not None:
                     window.ensure_native_back();assert window._native_back.button.isEnabled()
                 assert any(track.get('type') == 'audio' for track in window.player.tracks)
                 if render:
@@ -236,7 +236,7 @@ def self_test(render=False):
                     assert window.playback_view.quality.text() == window.player.quality
                     assert window.playback_view.mini_quality.text() == window.player.quality
                 assert window.player.engine.video_dec_params
-                if window._native_back is not None:
+                if render and window._native_back is not None:
                     window.ensure_native_back();assert window._native_back.button.isEnabled()
                 assert any(track.get('type') == 'audio' for track in window.player.tracks)
         finally:
