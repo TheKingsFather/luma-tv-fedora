@@ -85,7 +85,7 @@ class PlaybackView(QWidget):
         self.status=QLabel('Opening your source…');self.status.setAlignment(Qt.AlignmentFlag.AlignCenter);self.status.setStyleSheet('font-size:18px;color:#C7F8E5;background:rgba(8,20,32,170);border-radius:18px;padding:14px;');layout.addWidget(self.status,alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addStretch()
         self.bottom=QFrame();self.bottom.setObjectName('glass');box=QVBoxLayout(self.bottom);box.setContentsMargins(22,17,22,18);box.setSpacing(14)
-        time_row=QHBoxLayout();self.position=QLabel('0:00');self.source=QLabel('Finding the perfect frame…');self.source.setStyleSheet('color:#ACBED0;');self.total=QLabel('LIVE');time_row.addWidget(self.position);time_row.addWidget(self.source,1);time_row.addWidget(self.total);box.addLayout(time_row)
+        time_row=QHBoxLayout();self.position=QLabel('0:00');self.source=QLabel('Finding the perfect frame…');self.source.setStyleSheet('color:#ACBED0;');self.total=QLabel('LIVE');time_row.addWidget(self.position);time_row.addWidget(self.source,1);self.quality=QLabel();self.quality.setStyleSheet('color:#C7F8E5;background:rgba(101,160,145,55);border-radius:8px;padding:4px 9px;font-weight:600;');time_row.addWidget(self.quality);time_row.addWidget(self.total);box.addLayout(time_row)
         self.seek=QSlider(Qt.Orientation.Horizontal);self.seek.setAccessibleName('Playback position');self.seek.setRange(0,1000);self.seek.setEnabled(False);self.seek.sliderReleased.connect(lambda:player.seek(player.duration*self.seek.value()/1000));box.addWidget(self.seek)
         self.seek.actionTriggered.connect(lambda _:player.seek(player.duration*self.seek.sliderPosition()/1000) if player.duration>0 else None)
         self.controls_grid=QGridLayout();self.controls_grid.setContentsMargins(0,0,0,0);self.compact_controls=False
@@ -111,6 +111,7 @@ class PlaybackView(QWidget):
         self.mini_top.setStyleSheet('QFrame#glass {background:rgba(26,47,60,220);border:1px solid rgba(224,250,255,55);border-radius:14px;}')
         self.mini_title=DragTitle(title);self.mini_title.setMinimumWidth(0);self.mini_title.restore.connect(self.restore_requested)
         mini_top.addWidget(self.mini_title,1)
+        self.mini_quality=QLabel();self.mini_quality.setStyleSheet('color:#C7F8E5;font-weight:600;');mini_top.addWidget(self.mini_quality)
         self.mini_record=b('■',self.record_callback);self.mini_record.setToolTip('Stop and save recording');self.mini_record.setAccessibleName('Stop recording');mini_top.addWidget(self.mini_record);self.mini_record.hide()
         self.mini_record.setStyleSheet('QPushButton {color:white;background:#C62828;border:1px solid #EF5350;} QPushButton:hover,QPushButton:focus {background:#D32F2F;border-color:#FF8A80;}')
         self.restore_button=b('↗',self.restore_requested.emit);self.restore_button.setToolTip('Return to full player (P)');mini_top.addWidget(self.restore_button)
@@ -143,9 +144,16 @@ class PlaybackView(QWidget):
             widget.setMouseTracking(True);widget.installEventFilter(self)
         player.changed.connect(self.update_state);player.message.connect(self.show_message);player.buffering.connect(self.set_buffering)
         player.recording_changed.connect(self.update_recording);player.recording_saved.connect(self.recording_saved);player.recording_error.connect(lambda text:self.recording_notice(text,True))
+        player.quality_changed.connect(self.update_quality)
+        self.update_quality(player.quality,player.quality_detail)
         self.video.failure.connect(self.show_message)
         self.show_controls()
         self.update_recording()
+
+    def update_quality(self,quality,detail):
+        for badge in (self.quality,self.mini_quality):
+            badge.setText(quality or '—');badge.setToolTip(detail)
+            badge.setAccessibleName('Stream quality: '+(quality or 'unavailable'))
 
     def resizeEvent(self,event):
         super().resizeEvent(event)

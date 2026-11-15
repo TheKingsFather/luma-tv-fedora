@@ -1,3 +1,7 @@
+> **Luma TV 0.6.0** adds current stream resolution in the player and Settings → Check for app updates. [Download](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.6.0).
+>
+> In-app installation supports the macOS app and Fedora AppImage in a writable folder. Updates verify the GitHub asset SHA-256 digest and keep the previous package as `Luma TV.app.previous` or `*.AppImage.previous`. Private repository downloads use an existing GitHub CLI login, `GH_TOKEN`/`GITHUB_TOKEN`, or a token entered for the app session (Contents: Read permission). Source installations should download the packaged edition. Account data and preferences remain in their existing locations.
+
 > **Luma TV 0.5.2**: cleaner playback controls, clearer pairing, and source-level macOS rendering fixes. [Downloads for Fedora and macOS](https://github.com/TheKingsFather/luma-tv-fedora/releases/tag/v0.5.2). This release targets Fedora x86_64 and Intel Macs running macOS 13+. See [release notes](RELEASE-NOTES.md).
 
 # Luma TV for Fedora and macOS

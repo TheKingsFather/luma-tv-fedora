@@ -107,6 +107,12 @@ def self_test(render=False):
 
                 wait_for(app, lambda: window.player.position > .3 and not window.player.loading,
                          'Bundled libmpv video/audio playback')
+                wait_for(app, lambda: bool(window.player.quality), 'Current decoded stream resolution')
+                params=window.player.engine.video_params
+                assert window.player.quality == f"{params['h']}p"
+                if render:
+                    assert window.playback_view.quality.text() == window.player.quality
+                    assert window.playback_view.mini_quality.text() == window.player.quality
                 assert window.player.engine.video_dec_params
                 assert any(track.get('type') == 'audio' for track in window.player.tracks)
                 window.player.pause()
@@ -185,6 +191,12 @@ def self_test(render=False):
                 window.player.start([{'url': recording.as_uri(), 'name': 'Recorded fixture'}])
                 wait_for(app, lambda: window.player.media_loaded and window.player.position > .1,
                          'Recorded video playback')
+                wait_for(app, lambda: bool(window.player.quality), 'Current decoded stream resolution')
+                params=window.player.engine.video_params
+                assert window.player.quality == f"{params['h']}p"
+                if render:
+                    assert window.playback_view.quality.text() == window.player.quality
+                    assert window.playback_view.mini_quality.text() == window.player.quality
                 assert window.player.engine.video_dec_params
                 assert any(track.get('type') == 'audio' for track in window.player.tracks)
         finally:

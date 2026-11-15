@@ -29,6 +29,7 @@ class Player(QObject):
     finished=pyqtSignal(bool)
     message=pyqtSignal(str)
     tracks_changed=pyqtSignal(object)
+    quality_changed=pyqtSignal(str,str)
     buffering=pyqtSignal(bool)
     release_surface=pyqtSignal()
     recording_changed=pyqtSignal(bool,str)
@@ -40,6 +41,7 @@ class Player(QObject):
         self.engine=None;self.folder=None;self.generation=0
         self.streams=[];self.index=0;self.position=self.duration=0.
         self.paused=False;self.resume=0.;self.loading=False;self.headless=False
+        self.quality='';self.quality_detail=''
         self.ready=False;self.tracks=[];self.volume=100.;self.muted=False;self.cache_paused=False
         self.media_loaded=False;self.recording_path=None;self.recording_started=0.;self._record_token=0;self._record_future=None
         self.received.connect(self._receive)
@@ -59,7 +61,7 @@ class Player(QObject):
             if self.headless:options['ao']='null'
             self.engine=mpv.MPV(**options)
             epoch=self.generation
-            for name in ('time-pos','duration','pause','track-list','paused-for-cache','volume','mute'):
+            for name in ('time-pos','duration','pause','track-list','paused-for-cache','volume','mute','video-params'):
                 self.engine.observe_property(name,lambda prop,value,e=epoch:self.received.emit(e,{'event':'property-change','name':prop,'data':value}))
             @self.engine.event_callback('file-loaded','end-file')
             def event(ev):
@@ -88,7 +90,7 @@ class Player(QObject):
 
     def load(self):
         if not self.engine or not self.ready or not self.streams:return
-        self.stop_recording();self.media_loaded=False
+        self.stop_recording();self.media_loaded=False;self.set_quality(None)
         stream=self.streams[self.index]
         headers=stream.get('behaviorHints',{}).get('proxyHeaders',{}).get('request',{})
         fields=[f'{k}: {v}' for k,v in headers.items() if '\n' not in str(k)+str(v) and '\r' not in str(k)+str(v)]
@@ -117,6 +119,7 @@ class Player(QObject):
             elif name=='duration' and isinstance(value,(int,float)):self.duration=float(value)
             elif name=='pause':self.paused=bool(value)
             elif name=='mute':self.muted=bool(value)
+            elif name=='video-params':self.set_quality(value)
             elif name=='track-list':self.tracks=value or [];self.tracks_changed.emit(self.tracks)
             elif name=='paused-for-cache':self.cache_paused=bool(value);self.buffering.emit(self.cache_paused or self.loading)
             elif name=='volume' and isinstance(value,(int,float)):self.volume=float(value)
@@ -127,10 +130,20 @@ class Player(QObject):
             self.buffering.emit(False);self.message.emit('Playing in Luma')
             self.recording_changed.emit(self.recording,str(self.recording_path or ''))
         elif event['event']=='end-file':
-            self.media_loaded=False;self.stop_recording()
+            self.media_loaded=False;self.stop_recording();self.set_quality(None)
             self.recording_changed.emit(False,'')
             if event['reason']==mpv.MpvEventEndFile.ERROR:self.failover()
             elif event['reason']==mpv.MpvEventEndFile.EOF:self.finished.emit(True)
+
+    def set_quality(self,params):
+        params=params if isinstance(params,dict) else {}
+        width,height=params.get('w'),params.get('h')
+        valid=all(isinstance(v,(int,float)) and not isinstance(v,bool) and v>0 for v in (width,height))
+        quality=f'{int(height)}p' if valid else ''
+        detail=f'{int(width)} × {int(height)} · Current video resolution' if valid else 'Video resolution unavailable'
+        if (quality,detail)!=(self.quality,self.quality_detail):
+            self.quality,self.quality_detail=quality,detail
+            self.quality_changed.emit(quality,detail)
 
     def failover(self):
         self.loading=False
@@ -205,7 +218,7 @@ class Player(QObject):
         self.stop_recording();self.send('seek',max(0,position),'absolute')
     def stop(self):
         """Unload media while retaining the window's single native render context."""
-        self.stop_recording()
+        self.stop_recording();self.set_quality(None)
         self.timer.stop();self.streams=[];self.loading=False;self.tracks=[];self.media_loaded=False
         self.send('stop')
         if self.folder:self.folder.cleanup();self.folder=None

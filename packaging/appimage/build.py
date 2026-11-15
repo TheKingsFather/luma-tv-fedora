@@ -26,7 +26,7 @@ PYTHON = APP / 'usr/lib/python3.14'
 SITE = PYTHON / 'site-packages'
 DATA = APP / 'usr/share/luma-tv'
 NATIVE_SOURCES = set()
-SOURCE_FILES = ('luma.py', 'backend.py', 'desktop_storage.py', 'cards.py', 'player.py', 'player_view.py')
+SOURCE_FILES = ('luma.py', 'backend.py', 'desktop_storage.py', 'cards.py', 'player.py', 'player_view.py', 'updater.py')
 VERSION = re.search(r"VERSION = '([^']+)'", (SOURCE / 'luma.py').read_text()).group(1)
 
 

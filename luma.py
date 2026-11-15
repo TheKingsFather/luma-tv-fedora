@@ -15,12 +15,13 @@ from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, QSettings, QSize, QSta
 from PyQt6.QtGui import QColor, QPainter, QLinearGradient, QRadialGradient, QPixmap, QIcon, QShortcut, QKeySequence
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea, QLineEdit, QDialog, QComboBox, QMessageBox, QSlider, QSizePolicy, QFileDialog)
 from backend import Client, request, browseable, extra, future_video, UA, LIVE_TYPES, catalog_choices
+import updater
 from player import Player
 from cards import MediaCard, Artwork, ResponsiveGrid, CardRow
 from player_view import PlaybackView,MiniPlayer
 
 ROOT = Path(__file__).resolve().parent
-VERSION = '0.5.2'
+VERSION = '0.6.0'
 POOL = futures.ThreadPoolExecutor(8)
 IMAGES = futures.ThreadPoolExecutor(4)
 WRITES = futures.ThreadPoolExecutor(1)
@@ -97,6 +98,7 @@ class Window(QMainWindow):
         super().__init__()
         self.setWindowTitle('Luma TV');self.setWindowIcon(QIcon(str(ROOT/'luma.svg')))
         self.resize(1360,860);self.setMinimumSize(980,700)
+        self._update_busy=False;self._update_token='';self._update_dialog=None
         self.client=Client();self.settings=QSettings('Luma','Desktop');self.generation=0
         self.bus=Signals();self.bus.done.connect(self.deliver)
         self.pair_timer=QTimer(self);self.pair_timer.setInterval(2500);self.pair_timer.timeout.connect(self.poll_pair)
@@ -638,7 +640,69 @@ class Window(QMainWindow):
         if self.client.connected:box.addWidget(button('Disconnect this desktop',self.disconnect))
         for key,name,default in [('chooseSource','Always choose a source',False),('autoplay','Play the next episode',True)]:
             enabled=self.settings.value(key,default,type=bool);b=button(name+('  ·  On' if enabled else '  ·  Off'),lambda _,k=key,e=enabled:(self.settings.setValue(k,not e),self.settings_page()));box.addWidget(b)
+        box.addWidget(button('Check for app updates',self.check_updates))
         box.addWidget(label('Manage add-ons in Stremio on your phone, then refresh them here.',13,'#AEBED1'));self.layout.addWidget(panel);self.layout.addStretch();platform_name='macOS' if sys.platform=='darwin' else 'Fedora';self.layout.addWidget(label(f'Luma TV for {platform_name}  {VERSION}    ·    F11 fullscreen    ·    Playback powered by mpv',12,'#A2B8C9'))
+
+    def check_updates(self):
+        if self._update_dialog is not None:
+            self._update_dialog.raise_();self._update_dialog.activateWindow();return
+        dialog=QDialog(self);dialog.setWindowTitle('Luma TV updates');dialog.resize(530,240)
+        box=QVBoxLayout(dialog);box.addWidget(label('App updates',26,bold=True))
+        status=label('Checking GitHub Releases…');box.addWidget(status)
+        token=QLineEdit();token.setEchoMode(QLineEdit.EchoMode.Password)
+        token.setPlaceholderText('GitHub token · Contents: Read for luma-tv-fedora');token.hide();box.addWidget(token)
+        action=button('Checking…',lambda:None,True);action.setEnabled(False);box.addWidget(action)
+        box.addWidget(button('Close',dialog.close))
+        self._update_dialog=dialog
+        dialog.finished.connect(lambda _:setattr(self,'_update_dialog',None))
+        def set_action(text,callback):
+            action.setText(text);action.setEnabled(True)
+            try:action.clicked.disconnect()
+            except TypeError:pass
+            action.clicked.connect(callback)
+        def failed(error):
+            self._update_busy=False
+            status.setText(str(error) if isinstance(error,updater.UpdateError) else 'Could not complete the update. Check your connection and available disk space, then try again.')
+            if isinstance(error,updater.AuthenticationRequired):
+                token.show();set_action('Check with token',lambda:check(token.text().strip()))
+            else:set_action('Try again',lambda:check(self._update_token))
+        def checked(update):
+            self._update_busy=False
+            if update is None:
+                status.setText(f'You’re up to date. Luma TV {VERSION} is installed.');action.hide();return
+            status.setText('Luma TV '+update['version']+' is available. Download, verify and restart to install. Your account and preferences will be kept.')
+            set_action('Install and restart',lambda:download(update))
+        def check(credential=None):
+            if self._update_busy:return
+            self._update_busy=True;action.setEnabled(False);status.setText('Checking GitHub Releases…')
+            def task():
+                self._update_token=credential if credential is not None else updater.local_token()
+                return updater.check(VERSION,self._update_token)
+            self.work(task,checked,failed,token=-1)
+        def downloaded(update,result):
+            folder,staged=result
+            try:
+                self.sync_progress();self.player.shutdown()
+                updater.install(update['target'],staged)
+            except Exception as error:
+                failed(error);return
+            finally:
+                import shutil
+                shutil.rmtree(folder,ignore_errors=True)
+            self._update_busy=False;dialog.accept();self.close();updater.restart(update['target'])
+        def download(update):
+            if self._update_busy:return
+            if self.player.recording:
+                status.setText('Stop and save your recording before installing the update.');return
+            self._update_busy=True;action.setEnabled(False);status.setText('Downloading and verifying the update… Luma will restart when ready.')
+            self.work(lambda:updater.stage(update,self._update_token),lambda result:downloaded(update,result),failed,token=-1)
+        # Keep the callback owner alive until an in-progress operation finishes.
+        def finish_close(event):
+            if self._update_busy:event.ignore()
+            else:QDialog.closeEvent(dialog,event)
+        dialog.closeEvent=finish_close
+        dialog.reject=lambda:None if self._update_busy else QDialog.reject(dialog)
+        dialog.show();check()
 
     def refresh_stremio(self):
         self.clear_browse_cache()
@@ -658,6 +722,8 @@ class Window(QMainWindow):
         else:self.pair()
 
     def closeEvent(self,event):
+        if self._update_busy:
+            event.ignore();self.notice('Wait for the app update to finish before closing Luma.');return
         if self._record_dialog is not None:self._record_dialog.reject()
         self._page_serial+=1;self.generation=self._page_serial;self.clear_browse_cache()
         self.pair_timer.stop();self.sync_progress();self.dock_player();self.player.shutdown();self.playback_sync.stop();event.accept()

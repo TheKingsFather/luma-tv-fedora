@@ -1,10 +1,6 @@
-# Luma TV 0.5.2
+# Luma TV 0.6.0
 
-- Fixed unintended playback pauses when clicking empty control-panel space, labels, or disabled controls. Panel clicks no longer bubble into the video's click-to-pause handler.
-- Applied the same protection to mini-player controls and recording notices. Play/pause buttons and clicks on the unobstructed video retain their existing behavior.
-- Added regression coverage for real Qt mouse-event propagation through full-size and mini-player panels, and native packaged playback checks.
-- Retains the dropdown arrow and rounded popup corrections from 0.5.1.
-
-Downloads: Fedora x86_64 AppImage/source archive and Intel macOS 13+ DMG. No Apple silicon build. The Mac app is ad-hoc signed, not notarized.
-
-Packages must pass offline GUI, control interaction, H.264/AAC playback, recording/replay, OpenGL, mini-player, and macOS native deployment-target checks before publication. Real provider streams and account pairing are outside the offline tests.
+- Display the current decoded stream resolution (1080p, 1440p, 2160p, etc.) in full and mini player controls. Updates when an adaptive stream changes resolution; clears when changing or stopping a source.
+- Settings → Check for app updates checks stable GitHub Releases, downloads the matching platform package, verifies its SHA-256 digest and installs with a rollback copy before restarting. Supports macOS app bundles and Fedora AppImages in writable locations.
+- Private repository access uses GH_TOKEN/GITHUB_TOKEN, an existing GitHub CLI login, or a token entered for this app session. Tokens are never saved to preferences or included in release artifacts. Fine-grained tokens need Contents: Read on this repository.
+- Installation preserves Stremio account data and preferences. Stop a recording before updating. Source checkouts show guidance to use a packaged edition.

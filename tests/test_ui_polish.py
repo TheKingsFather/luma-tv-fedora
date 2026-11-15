@@ -102,6 +102,26 @@ class PolishTests(unittest.TestCase):
         finally:
             menu.close()
 
+    def test_update_check_private_token_retry_and_current_release(self):
+        from PyQt6.QtWidgets import QPushButton,QLineEdit,QLabel
+        import updater
+        pending=[]
+        self.window.work=lambda task,done,failed,**kwargs:pending.append((task,done,failed,kwargs))
+        self.window.check_updates()
+        dialog=self.window._update_dialog
+        self.assertEqual(pending[-1][3]['token'],-1)
+        pending[-1][2](updater.AuthenticationRequired('Private repository needs a token.'))
+        field=dialog.findChild(QLineEdit)
+        self.assertFalse(field.isHidden())
+        self.assertEqual(field.echoMode(),QLineEdit.EchoMode.Password)
+        action=next(b for b in dialog.findChildren(QPushButton) if b.text()=='Check with token')
+        field.setText('test-only-token');action.click()
+        self.assertEqual(len(pending),2)
+        pending[-1][1](None)
+        self.assertTrue(any('up to date' in label.text() for label in dialog.findChildren(QLabel)))
+        dialog.close()
+        self.assertIsNone(self.window._update_dialog)
+
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
         self.work = patch.object(luma.Window, 'work', lambda *a, **k: None)
