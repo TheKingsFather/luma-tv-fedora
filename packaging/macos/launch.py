@@ -73,7 +73,9 @@ def self_test(render=False):
             window.setWindowFlags(Qt.WindowType.FramelessWindowHint |
                                   Qt.WindowType.BypassWindowManagerHint |
                                   Qt.WindowType.WindowDoesNotAcceptFocus)
-            window.move(-5000, -5000)
+            # Xvfb is an isolated display. Keep the fixture on-screen so Qt
+            # and Mesa actually composite the OpenGL widget.
+            window.move(0, 0)
         window.resize(1280, 800)
         try:
             with patch.object(window, 'work', lambda *args, **kwargs: None):
@@ -127,7 +129,15 @@ def self_test(render=False):
                                   for x in (.2, .4, .6, .8) for y in (.25, .5, .75)}
                         return len(colors) > 5
 
-                    wait_for(app, frame_decoded, 'Embedded OpenGL framebuffer')
+                    try:
+                        wait_for(app, frame_decoded, 'Embedded OpenGL framebuffer')
+                    except RuntimeError:
+                        surface=window.playback_view.video;image=surface.grabFramebuffer()
+                        print(json.dumps({'render_diagnostics':{'frames':surface.frames,'width':image.width(),'height':image.height(),'position':window.player.position,'visible':surface.isVisible()}}),flush=True)
+                        for argument in sys.argv[1:]:
+                            if argument.startswith('--self-test-player-screenshot='):
+                                window.grab().save(argument.split('=',1)[1])
+                        raise
                 # Establish rendered frames while playback is advancing; pausing
                 # immediately after an asynchronous seek can freeze a blank FBO.
                 window.player.pause()
